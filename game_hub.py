@@ -1,0 +1,558 @@
+"""
+NostalgiKit - Vintage Handheld Gaming Experience
+Classic retro handheld style interface with three nostalgic games
+
+Copyright (c) 2025 NostalgiKit Project
+Licensed under MIT License - see LICENSE file for details
+"""
+
+import tkinter as tk
+from tkinter import ttk, messagebox
+import tkinter.font as tkFont
+from tkinter import PhotoImage
+import random
+import threading
+import time
+import os
+from PIL import Image, ImageTk, ImageDraw, ImageFilter
+import io
+import base64
+
+# Import NostalgiKit games
+from card_guess_nostalgik import CardGuessGame
+from war_game_nostalgik import WarGame
+from river_game_nostalgik import RiverGame
+
+class NostalgiKitHub:
+    def __init__(self):
+        self.root = tk.Tk()
+        self.root.title("NostalgiKit")
+        
+        # Set window icon
+        self.icon = None  # Keep reference to prevent garbage collection
+        try:
+            icon_path = os.path.join(os.path.dirname(__file__), 'icon.png')
+            if os.path.exists(icon_path):
+                # Try with PIL first for better compatibility
+                try:
+                    pil_image = Image.open(icon_path)
+                    # Resize if necessary for icon
+                    if pil_image.size != (32, 32):
+                        pil_image = pil_image.resize((32, 32), Image.Resampling.LANCZOS)
+                    self.icon = ImageTk.PhotoImage(pil_image)
+                    self.root.iconphoto(False, self.icon)
+                except Exception:
+                    # Fallback to PhotoImage
+                    self.icon = PhotoImage(file=icon_path)
+                    self.root.iconphoto(False, self.icon)
+        except Exception:
+            pass  # If icon loading fails, continue without it
+        
+        # Setup window properties (larger console size)
+        self.root.geometry("460x720")
+        self.root.resizable(False, False)
+        
+        # Configure style
+        self.style = ttk.Style()
+        self.style.theme_use('clam')
+        
+        # NostalgiKit colors (vintage cream theme like original image)
+        self.colors = {
+            'nostalgik_cream': '#E8E0C7',      # Main vintage cream color
+            'screen_green': '#9BBB59',        # Classic green screen
+            'dark_green': '#8B9467',          # Dark accents
+            'screen_dark': '#374224',         # Dark screen areas
+            'button_gray': '#8E8E93',         # Button color
+            'text_dark': '#1C1C1E',           # Dark text
+            'highlight': '#FFD23F',           # Yellow highlight
+            'red_button': '#FF3B30',          # X button (red)
+            'purple_button': '#8E44AD'        # Y button (purple)
+        }
+        
+        # Font setup
+        self.fonts = {
+            'retro_title': tkFont.Font(family="Courier", size=10, weight="bold"),
+            'retro_text': tkFont.Font(family="Courier", size=9, weight="bold"),
+            'retro_small': tkFont.Font(family="Courier", size=8, weight="bold"),
+            'retro_large': tkFont.Font(family="Courier", size=12, weight="bold"),
+            'retro_tiny': tkFont.Font(family="Courier", size=7, weight="bold")
+        }
+        
+        # Game state
+        self.current_screen = "menu"
+        self.selected_game = 0
+        self.games = [
+            {"name": "NUMBER ORACLE", "desc": "Magical Number Quest"},
+            {"name": "WAR GAME", "desc": "Turn-Based Combat"},
+            {"name": "RIVER PUZZLE", "desc": "Logic Challenge"}
+        ]
+        
+        # Setup the interface
+        self.setup_nostalgik_interface()
+        self.setup_keyboard_bindings()
+
+        # Show welcome screen
+        self.show_welcome_screen()
+
+    def setup_nostalgik_interface(self):
+        """Create the authentic NostalgiKit handheld interface"""
+        # Configure main window
+        self.root.configure(bg=self.colors['nostalgik_cream'])        # Setup keyboard focus
+        self.root.focus_set()
+        
+        # Main NostalgiKit frame (larger with more padding)
+        main_frame = tk.Frame(self.root, bg=self.colors['nostalgik_cream'], relief='raised', bd=3)
+        main_frame.pack(fill='both', expand=True, padx=18, pady=18)
+
+        # Top section with branding area (taller for larger console)
+        top_frame = tk.Frame(main_frame, bg=self.colors['nostalgik_cream'], height=50)
+        top_frame.pack(fill='x', pady=(12, 8))
+        top_frame.pack_propagate(False)
+
+        # NostalgiKit branding
+        brand_label = tk.Label(top_frame,
+                              text="NostalgiKIT",
+                              font=self.fonts['retro_title'],
+                              fg=self.colors['text_dark'],
+                              bg=self.colors['nostalgik_cream'])
+        brand_label.pack()
+
+        # Model designation
+        nostalgik_label = tk.Label(top_frame,
+                                text="CLASSIC",
+                                font=self.fonts['retro_small'],
+                                fg=self.colors['text_dark'],
+                                bg=self.colors['nostalgik_cream'])
+        nostalgik_label.pack()
+        
+        # Screen frame (larger with more padding)
+        screen_frame = tk.Frame(main_frame, bg=self.colors['dark_green'], relief='sunken', bd=3)
+        screen_frame.pack(fill='both', expand=True, padx=25, pady=12)
+        
+        # Screen label
+        screen_label_frame = tk.Frame(screen_frame, bg=self.colors['dark_green'], height=25)
+        screen_label_frame.pack(fill='x', padx=12, pady=6)
+        screen_label_frame.pack_propagate(False)
+        
+        screen_info = tk.Label(screen_label_frame,
+                              text="DOT MATRIX WITH STEREO SOUND",
+                              font=self.fonts['retro_tiny'],
+                              fg=self.colors['nostalgik_cream'],
+                              bg=self.colors['dark_green'])
+        screen_info.pack()
+
+        # Actual screen (larger padding)
+        self.screen = tk.Frame(screen_frame, bg=self.colors['screen_green'], relief='sunken', bd=2)
+        self.screen.pack(fill='both', expand=True, padx=12, pady=(0, 12))
+
+        # Create controls
+        self.create_controls(main_frame)
+
+    def create_controls(self, parent):
+        """Create NostalgiKit control layout (larger spacing for bigger console)"""
+        control_frame = tk.Frame(parent, bg=self.colors['nostalgik_cream'])
+        control_frame.pack(fill='x', padx=25, pady=(0, 18))
+        
+        # Control layout
+        controls_layout = tk.Frame(control_frame, bg=self.colors['nostalgik_cream'])
+        controls_layout.pack()
+        
+        # D-Pad (left side) - more spacing
+        dpad_frame = tk.Frame(controls_layout, bg=self.colors['nostalgik_cream'])
+        dpad_frame.pack(side='left', padx=(0, 60))
+        
+        # Action buttons (right side)
+        buttons_frame = tk.Frame(controls_layout, bg=self.colors['nostalgik_cream'])
+        buttons_frame.pack(side='right')
+        
+        # Bottom row controls - more spacing
+        bottom_controls = tk.Frame(control_frame, bg=self.colors['nostalgik_cream'])
+        bottom_controls.pack(pady=(25, 0))
+        
+        # Create D-Pad and buttons
+        self.create_dpad(dpad_frame)
+        self.create_action_buttons(buttons_frame)
+        self.create_select_start_buttons(bottom_controls)
+        
+    def create_dpad(self, parent):
+        """Create D-Pad controller"""
+        dpad_container = tk.Frame(parent, bg=self.colors['nostalgik_cream'])
+        dpad_container.pack()
+        
+        # D-Pad buttons arranged in cross pattern
+        # Top
+        up_btn = tk.Button(dpad_container,
+                          text="▲",
+                          font=self.fonts['retro_text'],
+                          bg=self.colors['button_gray'],
+                          fg=self.colors['text_dark'],
+                          relief='raised',
+                          bd=3,
+                          width=3,
+                          height=1,
+                          command=lambda: self.dpad_action("UP"),
+                          takefocus=False)
+        up_btn.grid(row=0, column=1, padx=1, pady=1)
+        
+        # Left, Center, Right
+        left_btn = tk.Button(dpad_container,
+                            text="◄",
+                            font=self.fonts['retro_text'],
+                            bg=self.colors['button_gray'],
+                            fg=self.colors['text_dark'],
+                            relief='raised',
+                            bd=3,
+                            width=3,
+                            height=1,
+                            command=lambda: self.dpad_action("LEFT"),
+                            takefocus=False)
+        left_btn.grid(row=1, column=0, padx=1, pady=1)
+        
+        center_frame = tk.Frame(dpad_container, bg=self.colors['button_gray'], width=30, height=20, relief='sunken', bd=1)
+        center_frame.grid(row=1, column=1, padx=1, pady=1)
+        center_frame.grid_propagate(False)
+        
+        right_btn = tk.Button(dpad_container,
+                             text="►",
+                             font=self.fonts['retro_text'],
+                             bg=self.colors['button_gray'],
+                             fg=self.colors['text_dark'],
+                             relief='raised',
+                             bd=3,
+                             width=3,
+                             height=1,
+                             command=lambda: self.dpad_action("RIGHT"),
+                             takefocus=False)
+        right_btn.grid(row=1, column=2, padx=1, pady=1)
+        
+        # Bottom
+        down_btn = tk.Button(dpad_container,
+                            text="▼",
+                            font=self.fonts['retro_text'],
+                            bg=self.colors['button_gray'],
+                            fg=self.colors['text_dark'],
+                            relief='raised',
+                            bd=3,
+                            width=3,
+                            height=1,
+                            command=lambda: self.dpad_action("DOWN"),
+                            takefocus=False)
+        down_btn.grid(row=2, column=1, padx=1, pady=1)
+        
+    def create_action_buttons(self, parent):
+        """Create X and Y action buttons"""
+        button_container = tk.Frame(parent, bg=self.colors['nostalgik_cream'])
+        button_container.pack()
+        
+        # X button (bottom right, red)
+        x_button = tk.Button(button_container,
+                            text="X",
+                            font=self.fonts['retro_text'],
+                            bg=self.colors['red_button'],
+                            fg='white',
+                            relief='raised',
+                            bd=4,
+                            width=4,
+                            height=2,
+                            command=self.x_button_action,
+                            takefocus=False)
+        x_button.grid(row=1, column=1, padx=8, pady=5)
+        
+        # Y button (bottom left, purple)
+        y_button = tk.Button(button_container,
+                            text="Y",
+                            font=self.fonts['retro_text'],
+                            bg=self.colors['purple_button'],
+                            fg='white',
+                            relief='raised',
+                            bd=4,
+                            width=4,
+                            height=2,
+                            command=self.y_button_action,
+                            takefocus=False)
+        y_button.grid(row=1, column=0, padx=8, pady=5)
+        
+    def create_select_start_buttons(self, parent):
+        """Create SELECT and START buttons"""
+        # SELECT and START in classic layout
+        select_start_frame = tk.Frame(parent, bg=self.colors['nostalgik_cream'])
+        select_start_frame.pack()
+        
+        # SELECT button
+        select_btn = tk.Button(select_start_frame,
+                              text="SELECT",
+                              font=self.fonts['retro_small'],
+                              bg=self.colors['button_gray'],
+                              fg=self.colors['text_dark'],
+                              relief='raised',
+                              bd=2,
+                              padx=8,
+                              pady=3,
+                              command=self.select_action,
+                              takefocus=False)
+        select_btn.pack(side='left', padx=15)
+        
+        # START button
+        start_btn = tk.Button(select_start_frame,
+                             text="START",
+                             font=self.fonts['retro_small'],
+                             bg=self.colors['button_gray'],
+                             fg=self.colors['text_dark'],
+                             relief='raised',
+                             bd=2,
+                             padx=8,
+                             pady=3,
+                             command=self.start_action,
+                             takefocus=False)
+        start_btn.pack(side='left', padx=15)
+        
+    def setup_keyboard_bindings(self):
+        """Setup comprehensive keyboard controls"""
+        # Arrow keys and WASD for D-Pad
+        self.root.bind('<Up>', lambda e: self.dpad_action("UP"))
+        self.root.bind('<Down>', lambda e: self.dpad_action("DOWN"))
+        self.root.bind('<Left>', lambda e: self.dpad_action("LEFT"))
+        self.root.bind('<Right>', lambda e: self.dpad_action("RIGHT"))
+        self.root.bind('<w>', lambda e: self.dpad_action("UP"))
+        self.root.bind('<s>', lambda e: self.dpad_action("DOWN"))
+        self.root.bind('<a>', lambda e: self.dpad_action("LEFT"))
+        self.root.bind('<d>', lambda e: self.dpad_action("RIGHT"))
+        
+        # Action buttons
+        self.root.bind('<Return>', lambda e: self.x_button_action())  # Enter = X button
+        self.root.bind('<space>', lambda e: self.x_button_action())   # Space = X button
+        self.root.bind('<x>', lambda e: self.x_button_action())       # X = X button
+        self.root.bind('<Escape>', lambda e: self.y_button_action())  # Escape = Y button
+        self.root.bind('<BackSpace>', lambda e: self.y_button_action()) # Backspace = Y button
+        self.root.bind('<y>', lambda e: self.y_button_action())       # Y = Y button
+        
+        # SELECT and START
+        self.root.bind('<Tab>', lambda e: self.select_action())       # Tab = SELECT
+        
+        # Ensure focus
+        self.root.bind('<Button-1>', lambda e: self.root.focus_set())
+        
+        # Key press event handler
+        self.root.bind('<Key>', self.on_key_press)
+        
+    def on_key_press(self, event):
+        """Handle key press events"""
+        key = event.keysym.lower()
+        print(f"Key pressed: {key}")
+        
+    def dpad_action(self, direction):
+        """Handle D-Pad direction actions"""
+        print(f"D-Pad pressed: {direction}")
+        
+        if self.current_screen == "menu":
+            if direction == "UP":
+                self.selected_game = (self.selected_game - 1) % len(self.games)
+                self.show_main_menu()
+                print(f"Menu selection: {self.selected_game}")
+            elif direction == "DOWN":
+                self.selected_game = (self.selected_game + 1) % len(self.games)
+                self.show_main_menu()
+                print(f"Menu selection: {self.selected_game}")
+                
+    def x_button_action(self):
+        """Handle X button press"""
+        print(f"X button pressed, screen: {self.current_screen}")
+        
+        if self.current_screen == "welcome":
+            self.show_main_menu()
+        elif self.current_screen == "menu":
+            print(f"Selected index: {self.selected_game}")
+            if self.selected_game == 0:
+                self.start_card_game()
+            elif self.selected_game == 1:
+                self.start_war_game()
+            elif self.selected_game == 2:
+                self.start_river_game()
+                
+    def y_button_action(self):
+        """Handle Y button press"""
+        if self.current_screen == "menu":
+            self.show_welcome_screen()
+        elif self.current_screen == "welcome":
+            self.power_off()
+            
+    def select_action(self):
+        """Handle SELECT button press"""
+        # Could be used for options or settings
+        pass
+        
+    def start_action(self):
+        """Handle START button press"""
+        if self.current_screen == "welcome":
+            self.show_main_menu()
+        elif self.current_screen == "menu":
+            self.a_button_action()  # Same as X button in menu
+            
+    def show_welcome_screen(self):
+        """Show NostalgiKit welcome screen"""
+        self.clear_screen()
+        self.current_screen = "welcome"
+        
+        content = tk.Frame(self.screen, bg=self.colors['screen_green'])
+        content.pack(fill='both', expand=True, padx=10, pady=10)
+        
+        # Welcome message
+        welcome_label = tk.Label(content,
+                                text="NostalgiKIT\nCLASSIC",
+                                font=self.fonts['retro_large'],
+                                fg=self.colors['screen_dark'],
+                                bg=self.colors['screen_green'],
+                                justify='center')
+        welcome_label.pack(expand=True)
+        
+        # NostalgiKit logo simulation
+        logo_label = tk.Label(content,
+                             text="🎮",
+                             font=self.fonts['retro_large'],
+                             fg=self.colors['screen_dark'],
+                             bg=self.colors['screen_green'])
+        logo_label.pack()
+        
+        # Instructions
+        instruction_label = tk.Label(content,
+                                    text="Press START\nor X to begin",
+                                    font=self.fonts['retro_small'],
+                                    fg=self.colors['screen_dark'],
+                                    bg=self.colors['screen_green'],
+                                    justify='center')
+        instruction_label.pack(side='bottom', pady=10)
+        
+    def show_main_menu(self):
+        """Show main game selection menu"""
+        self.clear_screen()
+        self.current_screen = "menu"
+        
+        content = tk.Frame(self.screen, bg=self.colors['screen_green'])
+        content.pack(fill='both', expand=True, padx=5, pady=5)
+        
+        # Title
+        title_label = tk.Label(content,
+                              text="SELECT GAME",
+                              font=self.fonts['retro_text'],
+                              fg=self.colors['screen_dark'],
+                              bg=self.colors['screen_green'])
+        title_label.pack(pady=(5, 10))
+        
+        # Game list
+        for i, game in enumerate(self.games):
+            if i == self.selected_game:
+                # Selected game
+                game_frame = tk.Frame(content, bg=self.colors['screen_dark'], relief='raised', bd=1)
+                game_frame.pack(fill='x', padx=10, pady=2)
+                
+                game_label = tk.Label(game_frame,
+                                     text=f"► {game['name']}",
+                                     font=self.fonts['retro_small'],
+                                     fg=self.colors['screen_green'],
+                                     bg=self.colors['screen_dark'],
+                                     anchor='w')
+                game_label.pack(fill='x', padx=5, pady=2)
+                
+                desc_label = tk.Label(game_frame,
+                                     text=f"  {game['desc']}",
+                                     font=self.fonts['retro_tiny'],
+                                     fg=self.colors['screen_green'],
+                                     bg=self.colors['screen_dark'],
+                                     anchor='w')
+                desc_label.pack(fill='x', padx=5)
+            else:
+                # Unselected game
+                game_label = tk.Label(content,
+                                     text=f"  {game['name']}",
+                                     font=self.fonts['retro_small'],
+                                     fg=self.colors['screen_dark'],
+                                     bg=self.colors['screen_green'],
+                                     anchor='w')
+                game_label.pack(fill='x', padx=10, pady=1)
+                
+        # Controls info
+        controls_frame = tk.Frame(content, bg=self.colors['screen_green'])
+        controls_frame.pack(side='bottom', fill='x', pady=5)
+        
+        controls_label = tk.Label(controls_frame,
+                                 text="↑↓: Select  X: Play  Y: Back",
+                                 font=self.fonts['retro_tiny'],
+                                 fg=self.colors['screen_dark'],
+                                 bg=self.colors['screen_green'])
+        controls_label.pack()
+        
+    def power_off(self):
+        """Simulate power off"""
+        self.clear_screen()
+        
+        off_frame = tk.Frame(self.screen, bg=self.colors['screen_dark'])
+        off_frame.pack(fill='both', expand=True)
+        
+        self.current_screen = "off"
+        
+    def clear_screen(self):
+        """Clear the NostalgiKit screen"""
+        for widget in self.screen.winfo_children():
+            widget.destroy()
+            
+    def show_loading_screen(self, game_name):
+        """Show loading screen for games"""
+        self.clear_screen()
+        loading_frame = tk.Frame(self.screen, bg=self.colors['screen_green'])
+        loading_frame.pack(fill='both', expand=True)
+        
+        loading_label = tk.Label(loading_frame,
+                                text=f"LOADING...\n{game_name}\n\nPress Y to return",
+                                font=self.fonts['retro_text'],
+                                fg=self.colors['screen_dark'],
+                                bg=self.colors['screen_green'],
+                                justify='center')
+        loading_label.pack(expand=True)
+        
+    def start_card_game(self):
+        """Start the Card Guess Game"""
+        # Show loading screen
+        self.show_loading_screen("NUMBER ORACLE")
+        
+        # Launch actual game after brief delay
+        self.root.after(1500, lambda: CardGuessGame(self.root, self.return_to_nostalgik))
+        
+    def start_war_game(self):
+        """Start the War Game"""
+        # Show loading screen
+        self.show_loading_screen("WAR GAME")
+        
+        # Launch actual game after brief delay
+        self.root.after(1500, lambda: WarGame(self.root, self.return_to_nostalgik))
+        
+    def start_river_game(self):
+        """Start the River Crossing Game"""
+        # Show loading screen
+        self.show_loading_screen("RIVER PUZZLE")
+        
+        # Launch actual game after brief delay
+        self.root.after(1500, lambda: RiverGame(self.root, self.return_to_nostalgik))
+
+    def return_to_nostalgik(self):
+        """Return to NostalgiKit interface"""
+        # Restore NostalgiKit window size and properties (updated to match new size)
+        self.root.geometry("460x720")
+        self.root.configure(bg=self.colors['nostalgik_cream'])
+        self.root.resizable(False, False)
+        
+        # Recreate the interface
+        for widget in self.root.winfo_children():
+            widget.destroy()
+            
+        self.setup_nostalgik_interface()
+        self.setup_keyboard_bindings()
+        self.show_main_menu()
+        
+    def run(self):
+        """Start the NostalgiKit"""
+        self.root.mainloop()
+
+if __name__ == "__main__":
+    # Create and run the NostalgiKit
+    NostalgiKIT = NostalgiKitHub()
+    NostalgiKIT.run()
