@@ -17,11 +17,13 @@ import os
 from PIL import Image, ImageTk, ImageDraw, ImageFilter
 import io
 import base64
+import pygame  # For gamepad support
 
 # Import NostalgiKit games
 from card_guess_nostalgik import CardGuessGame
 from war_game_nostalgik import WarGame
 from river_game_nostalgik import RiverGame
+from galaxy_war_pat import GalaxyWarPat
 
 class NostalgiKitHub:
     def __init__(self):
@@ -84,15 +86,28 @@ class NostalgiKitHub:
         self.games = [
             {"name": "NUMBER ORACLE", "desc": "Magical Number Quest"},
             {"name": "WAR GAME", "desc": "Turn-Based Combat"},
-            {"name": "RIVER PUZZLE", "desc": "Logic Challenge"}
+            {"name": "RIVER PUZZLE", "desc": "Logic Challenge"},
+            {"name": "GALAXY WAR PAT", "desc": "Space Invaders"}
         ]
+        
+        # Battery level (simulation)
+        self.battery_level = 3  # 0-4 blocks
+        
+        # Gamepad support
+        self.init_gamepad()
         
         # Setup the interface
         self.setup_nostalgik_interface()
         self.setup_keyboard_bindings()
 
-        # Show welcome screen
-        self.show_welcome_screen()
+        # Show blank screen first, then welcome screen after 0.5 seconds
+        self.show_blank_screen()
+        self.root.after(500, self.show_welcome_screen)
+        
+        # Start gamepad polling
+        if self.gamepad_enabled:
+            self.gamepad_polling_active = True
+            self.root.after(100, self.poll_gamepad)
 
     def setup_nostalgik_interface(self):
         """Create the authentic NostalgiKit handheld interface"""
@@ -134,16 +149,29 @@ class NostalgiKitHub:
         screen_label_frame.pack(fill='x', padx=12, pady=6)
         screen_label_frame.pack_propagate(False)
         
+        # Faded text at top
         screen_info = tk.Label(screen_label_frame,
                               text="DOT MATRIX WITH STEREO SOUND",
                               font=self.fonts['retro_tiny'],
-                              fg=self.colors['nostalgik_cream'],
+                              fg='#6B7458',  # Faded greenish color
                               bg=self.colors['dark_green'])
         screen_info.pack()
 
         # Actual screen (larger padding)
         self.screen = tk.Frame(screen_frame, bg=self.colors['screen_green'], relief='sunken', bd=2)
         self.screen.pack(fill='both', expand=True, padx=12, pady=(0, 12))
+        
+        # Battery indicator in bottom right corner
+        battery_frame = tk.Frame(screen_frame, bg=self.colors['dark_green'])
+        battery_frame.pack(side='bottom', anchor='e', padx=12, pady=(0, 6))
+        
+        battery_text = self.get_battery_display()
+        self.battery_label = tk.Label(battery_frame,
+                                      text=battery_text,
+                                      font=self.fonts['retro_tiny'],
+                                      fg='#6B7458',  # Faded color
+                                      bg=self.colors['dark_green'])
+        self.battery_label.pack()
 
         # Create controls
         self.create_controls(main_frame)
@@ -335,6 +363,133 @@ class NostalgiKitHub:
         # Key press event handler
         self.root.bind('<Key>', self.on_key_press)
         
+    def get_battery_display(self):
+        """Generate battery display text"""
+        filled_blocks = '▓' * self.battery_level
+        empty_blocks = '▒' * (4 - self.battery_level)
+        return f"BATTERY {filled_blocks}{empty_blocks}"
+    
+    def init_gamepad(self):
+        """Initialize pygame gamepad support"""
+        try:
+            pygame.init()
+            pygame.joystick.init()
+            
+            # Gamepad state
+            self.joystick = None
+            self.gamepad_enabled = True
+            
+            # Button mapping (XInput standard)
+            self.BTN_A = 0      # A button (OK/Confirm)
+            self.BTN_B = 1      # B button (Back)
+            self.BTN_X = 2      # X button
+            self.BTN_Y = 3      # Y button
+            self.BTN_LB = 4     # Left bumper
+            self.BTN_RB = 5     # Right bumper
+            self.BTN_BACK = 6   # Back/Select button
+            self.BTN_START = 7  # Start button
+            
+            # State tracking for edge-trigger (prevent spam)
+            self.last_button_state = {}
+            self.last_hat = (0, 0)
+            self.gamepad_polling_active = False
+            
+            # Try to connect gamepad
+            self.ensure_gamepad()
+            
+        except Exception as e:
+            print(f"Gamepad initialization failed: {e}")
+            self.gamepad_enabled = False
+    
+    def ensure_gamepad(self):
+        """Check and connect gamepad if available"""
+        if not self.gamepad_enabled:
+            return None
+            
+        try:
+            pygame.joystick.quit()
+            pygame.joystick.init()
+            
+            if pygame.joystick.get_count() > 0:
+                self.joystick = pygame.joystick.Joystick(0)
+                self.joystick.init()
+                print(f"Gamepad connected: {self.joystick.get_name()}")
+                return self.joystick
+            else:
+                self.joystick = None
+                return None
+        except Exception as e:
+            print(f"Gamepad connection error: {e}")
+            self.joystick = None
+            return None
+    
+    def poll_gamepad(self):
+        """Poll gamepad input and trigger actions"""
+        if not self.gamepad_enabled or not self.gamepad_polling_active:
+            return
+        
+        # Check if window still exists
+        try:
+            self.root.winfo_exists()
+        except:
+            return
+        
+        # Check for gamepad connection (hot-plug support)
+        if self.joystick is None or not self.joystick.get_init():
+            self.ensure_gamepad()
+        
+        try:
+            pygame.event.pump()  # Update events
+            
+            if self.joystick is not None:
+                # --- Button Handling (with edge-trigger) ---
+                def is_pressed(btn_index):
+                    try:
+                        return self.joystick.get_button(btn_index) == 1
+                    except pygame.error:
+                        return False
+                
+                def button_just_pressed(btn_index):
+                    """Check if button was just pressed (edge-trigger)"""
+                    current = is_pressed(btn_index)
+                    previous = self.last_button_state.get(btn_index, False)
+                    self.last_button_state[btn_index] = current
+                    return current and not previous
+                
+                # Map buttons to actions
+                if button_just_pressed(self.BTN_START):
+                    self.start_action()
+                if button_just_pressed(self.BTN_BACK):
+                    self.select_action()
+                if button_just_pressed(self.BTN_A) or button_just_pressed(self.BTN_X):
+                    self.x_button_action()
+                if button_just_pressed(self.BTN_B) or button_just_pressed(self.BTN_Y):
+                    self.y_button_action()
+                
+                # --- D-Pad (Hat) Handling ---
+                try:
+                    hat = self.joystick.get_hat(0)  # (x, y)
+                except pygame.error:
+                    hat = (0, 0)
+                
+                # Trigger only on state change (edge-trigger)
+                if hat != self.last_hat:
+                    if hat == (0, 1):      # UP
+                        self.dpad_action("UP")
+                    elif hat == (0, -1):   # DOWN
+                        self.dpad_action("DOWN")
+                    elif hat == (-1, 0):   # LEFT
+                        self.dpad_action("LEFT")
+                    elif hat == (1, 0):    # RIGHT
+                        self.dpad_action("RIGHT")
+                    self.last_hat = hat
+        
+        except Exception as e:
+            print(f"Gamepad polling error: {e}")
+        
+        # Poll every 30ms (~33 FPS)
+        self.root.after(30, self.poll_gamepad)
+    
     def on_key_press(self, event):
         """Handle key press events"""
         key = event.keysym.lower()
@@ -368,6 +523,8 @@ class NostalgiKitHub:
                 self.start_war_game()
             elif self.selected_game == 2:
                 self.start_river_game()
+            elif self.selected_game == 3:
+                self.start_galaxy_war_game()
                 
     def y_button_action(self):
         """Handle Y button press"""
@@ -388,6 +545,15 @@ class NostalgiKitHub:
         elif self.current_screen == "menu":
             self.a_button_action()  # Same as X button in menu
             
+    def show_blank_screen(self):
+        """Show blank screen on startup"""
+        self.clear_screen()
+        self.current_screen = "blank"
+        
+        # Just empty screen
+        blank_frame = tk.Frame(self.screen, bg=self.colors['screen_green'])
+        blank_frame.pack(fill='both', expand=True)
+    
     def show_welcome_screen(self):
         """Show NostalgiKit welcome screen"""
         self.clear_screen()
@@ -511,6 +677,9 @@ class NostalgiKitHub:
         
     def start_card_game(self):
         """Start the Card Guess Game"""
+        # Stop gamepad polling while game is running
+        self.gamepad_polling_active = False
+        
         # Show loading screen
         self.show_loading_screen("NUMBER ORACLE")
         
@@ -519,6 +688,9 @@ class NostalgiKitHub:
         
     def start_war_game(self):
         """Start the War Game"""
+        # Stop gamepad polling while game is running
+        self.gamepad_polling_active = False
+        
         # Show loading screen
         self.show_loading_screen("WAR GAME")
         
@@ -527,11 +699,25 @@ class NostalgiKitHub:
         
     def start_river_game(self):
         """Start the River Crossing Game"""
+        # Stop gamepad polling while game is running
+        self.gamepad_polling_active = False
+        
         # Show loading screen
         self.show_loading_screen("RIVER PUZZLE")
         
         # Launch actual game after brief delay
         self.root.after(1500, lambda: RiverGame(self.root, self.return_to_nostalgik))
+
+    def start_galaxy_war_game(self):
+        """Start the Galaxy War Pat Game"""
+        # Stop gamepad polling while game is running
+        self.gamepad_polling_active = False
+        
+        # Show loading screen
+        self.show_loading_screen("GALAXY WAR PAT")
+        
+        # Launch actual game after brief delay
+        self.root.after(1500, lambda: GalaxyWarPat(self.root, self.return_to_nostalgik))
 
     def return_to_nostalgik(self):
         """Return to NostalgiKit interface"""
@@ -547,6 +733,11 @@ class NostalgiKitHub:
         self.setup_nostalgik_interface()
         self.setup_keyboard_bindings()
         self.show_main_menu()
+        
+        # Restart gamepad polling
+        if self.gamepad_enabled and not self.gamepad_polling_active:
+            self.gamepad_polling_active = True
+            self.root.after(100, self.poll_gamepad)
         
     def run(self):
         """Start the NostalgiKit"""

@@ -35,6 +35,17 @@ Transform your PC into a classic vintage handheld console! Enjoy three fully mod
   - Logic validation system
   - Multiple difficulty scenarios
 
+### 4. 🚀 Galaxy War Pat (Space Shooter)
+- **Genre**: Arcade/Action
+- **Gameplay**: Classic space invaders-style shooter with pixel art design
+- **Features**:
+  - Fast-paced arcade action
+  - Pixel art enemy designs
+  - Level progression system
+  - Lives and scoring system
+  - Gamepad support
+  - Particle effects and explosions
+
 ## 🎮 NostalgiKit Controls
 
 ### D-Pad Navigation
@@ -58,20 +69,23 @@ Transform your PC into a classic vintage handheld console! Enjoy three fully mod
 
 ## 🚀 Quick Start
 
-### Method 1: Direct Launch
-```cmd
-python game_hub.py
-```
-
-### Method 2: Windows Batch File
+### Method 1: Windows Batch File (Recommended)
 ```cmd
 start_games.bat
 ```
+Double-click the `start_games.bat` file for the complete NostalgiKit launcher experience with retro-style startup screen.
 
-### Method 3: Python Main Launcher
+### Method 2: Python Main Launcher
 ```cmd
 python main.py
 ```
+Launches the hub with dependency checking and error handling.
+
+### Method 3: Direct Hub Launch
+```cmd
+python game_hub.py
+```
+Direct access to the NostalgiKit gaming hub interface.
 
 ## 📋 System Requirements
 
@@ -81,33 +95,39 @@ python main.py
   ```cmd
   pip install Pillow
   ```
+- **pygame** for gamepad support (optional):
+  ```cmd
+  pip install pygame
+  ```
 
 ## 🛠️ Installation
 
 1. **Clone or Download** all game files to your directory
 2. **Install Dependencies**:
    ```cmd
-   pip install Pillow
+   pip install Pillow pygame
    ```
 3. **Launch NostalgiKit**:
-   ```cmd
-   python game_hub.py
-   ```
+   - **Windows**: Double-click `start_games.bat`
+   - **All Platforms**: Run `python main.py`
+   - **Direct**: Run `python game_hub.py`
 
 ## 📁 File Structure
 
 ```
 📦 NostalgiKit
-├── 🎮 game_hub.py              # Main NostalgiKit interface
+├── 🎮 game_hub.py                # Main NostalgiKit interface
 ├── 🔮 card_guess_nostalgik.py    # Number Oracle game
 ├── ⚔️ war_game_nostalgik.py      # War Game combat
 ├── 🌊 river_game_nostalgik.py    # River Puzzle logic
-├── 🚀 main.py                  # Application launcher
-├── 🏁 start_games.bat          # Windows quick-start
-├── 📖 README.md                # This documentation
-├── 📜 CardGuessGame.py         # Original console version
-├── 📜 mywargame.py             # Original console version
-└── 📜 river.py                 # Original console version
+├── 🚀 galaxy_war_pat.py          # Galaxy War Pat shooter
+├── 🏁 main.py                    # Application launcher with dependency checks
+├── 🎯 start_games.bat            # Windows launcher with retro startup screen
+├── 📖 README.md                  # This documentation
+├── 📜 LICENSE.md                 # MIT License
+├── 📜 VERSION.md                 # Version information
+├── 📜 COPYRIGHT.md               # Copyright notice
+└── 📜 DISCLAIMER                 # Legal disclaimer
 ```
 
 ## 🎨 Design Philosophy
@@ -180,9 +200,15 @@ Experience the nostalgia of classic handheld gaming:
 - **Efficiency Expert**: Complete in under 10 moves
 - **Logic Master**: Complete without any failed attempts
 
+### Galaxy War Pat Mastery
+- **Sharp Shooter**: Achieve 90%+ accuracy
+- **Survivor**: Complete 5 levels without losing a life
+- **High Scorer**: Reach 10,000 points
+- **Speed Demon**: Clear a level in under 30 seconds
+
 ## 🎮 The Complete NostalgiKit Experience
 
-Step back in time to the golden age of portable gaming! Our NostalgiKit recreates the magic of vintage handheld consoles while bringing three beloved puzzle and strategy games into the modern era. Whether you're a retro gaming enthusiast or discovering these classic gameplay styles for the first time, prepare for hours of engaging, nostalgic entertainment.
+Step back in time to the golden age of portable gaming! Our NostalgiKit recreates the magic of vintage handheld consoles while bringing four beloved games into the modern era - from classic puzzle and strategy to fast-paced arcade action. Whether you're a retro gaming enthusiast or discovering these gameplay styles for the first time, prepare for hours of engaging, nostalgic entertainment.
 
 **🎯 Ready to Game? Launch your NostalgiKit and dive into retro gaming perfection!**
 
@@ -191,7 +217,7 @@ Step back in time to the golden age of portable gaming! Our NostalgiKit recreate
 ## 📜 License & Copyright
 
 ### Copyright Notice
-Copyright (c) 2025 NostalgiKit Project. All rights reserved.
+Copyright (c) 2025-2026 NostalgiKit Project by B. Tamer Akipek. All rights reserved.
 
 This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for complete details.
 

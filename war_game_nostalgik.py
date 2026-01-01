@@ -12,6 +12,7 @@ import tkinter.font as tkFont
 import random
 import threading
 import time
+import pygame  # For gamepad support
 
 class NostalgiKitWarGame:
     def __init__(self, parent, return_callback):
@@ -98,6 +99,7 @@ class NostalgiKitWarGame:
         self.current_screen = "intro"
         self.setup_fonts()
         self.setup_retro_interface()
+        self.init_gamepad()
         
     def setup_character_actions(self, character_class):
         """Setup actions based on character class"""
@@ -189,6 +191,88 @@ class NostalgiKitWarGame:
         # Start with intro
         self.show_intro()
         
+        # Gamepad initialization will happen after this
+    
+    def init_gamepad(self):
+        """Initialize gamepad support"""
+        try:
+            if not pygame.get_init():
+                pygame.init()
+            if not pygame.joystick.get_init():
+                pygame.joystick.init()
+            
+            self.joystick = None
+            self.gamepad_enabled = True
+            self.last_button_state = {}
+            self.last_hat = (0, 0)
+            
+            if pygame.joystick.get_count() > 0:
+                self.joystick = pygame.joystick.Joystick(0)
+                self.joystick.init()
+            
+            self.parent.after(30, self.poll_gamepad)
+        except Exception as e:
+            print(f"Gamepad init error: {e}")
+            self.gamepad_enabled = False
+    
+    def poll_gamepad(self):
+        """Poll gamepad input"""
+        if not self.gamepad_enabled:
+            return
+        
+        try:
+            self.parent.winfo_exists()
+        except:
+            return
+        
+        try:
+            pygame.event.pump()
+            
+            if self.joystick is not None and self.joystick.get_init():
+                def is_pressed(btn):
+                    try:
+                        return self.joystick.get_button(btn) == 1
+                    except:
+                        return False
+                
+                def just_pressed(btn):
+                    current = is_pressed(btn)
+                    previous = self.last_button_state.get(btn, False)
+                    self.last_button_state[btn] = current
+                    return current and not previous
+                
+                # Simulate key presses
+                if just_pressed(0) or just_pressed(2):  # A or X
+                    event = type('Event', (), {'keysym': 'Return', 'char': '\r'})()
+                    self.on_key_press(event)
+                
+                if just_pressed(1) or just_pressed(3):  # B or Y
+                    event = type('Event', (), {'keysym': 'Escape', 'char': '\x1b'})()
+                    self.on_key_press(event)
+                
+                # D-Pad
+                try:
+                    hat = self.joystick.get_hat(0)
+                    if hat != self.last_hat:
+                        if hat == (0, 1):  # UP
+                            event = type('Event', (), {'keysym': 'Up', 'char': ''})()
+                            self.on_key_press(event)
+                        elif hat == (0, -1):  # DOWN
+                            event = type('Event', (), {'keysym': 'Down', 'char': ''})()
+                            self.on_key_press(event)
+                        self.last_hat = hat
+                except:
+                    pass
+        
+        except Exception as e:
+            if "bad window" not in str(e):
+                print(f"Gamepad poll error: {e}")
+        
+        try:
+            self.parent.after(30, self.poll_gamepad)
+        except:
+            pass
+    
     def create_retro_controls(self, parent):
         """Create NostalgiKit style controls"""
         control_frame = tk.Frame(parent, bg=self.colors['NostalgiKit_cream'])

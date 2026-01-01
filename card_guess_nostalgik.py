@@ -11,6 +11,7 @@ from tkinter import ttk, messagebox
 import tkinter.font as tkFont
 import random
 import math
+import pygame  # For gamepad support
 
 class NostalgiKitCardGame:
     def __init__(self, parent, return_callback):
@@ -47,6 +48,7 @@ class NostalgiKitCardGame:
         
         self.setup_fonts()
         self.setup_retro_interface()
+        self.init_gamepad()
         
     def setup_fonts(self):
         """Setup NostalgiKit style fonts (matching game_hub.py exactly)"""
@@ -412,6 +414,78 @@ to begin!"""
         for attr in list(self.__dict__.keys()):
             if attr.startswith('number_row_'):
                 delattr(self, attr)
+    
+    def init_gamepad(self):
+        """Initialize gamepad support"""
+        try:
+            if not pygame.get_init():
+                pygame.init()
+            if not pygame.joystick.get_init():
+                pygame.joystick.init()
+            
+            self.joystick = None
+            self.gamepad_enabled = True
+            self.last_button_state = {}
+            
+            if pygame.joystick.get_count() > 0:
+                self.joystick = pygame.joystick.Joystick(0)
+                self.joystick.init()
+            
+            self.parent.after(30, self.poll_gamepad)
+        except Exception as e:
+            print(f"Gamepad init error: {e}")
+            self.gamepad_enabled = False
+    
+    def poll_gamepad(self):
+        """Poll gamepad input"""
+        if not self.gamepad_enabled:
+            return
+        
+        try:
+            self.parent.winfo_exists()
+        except:
+            return
+        
+        try:
+            pygame.event.pump()
+            
+            if self.joystick is not None and self.joystick.get_init():
+                def is_pressed(btn):
+                    try:
+                        return self.joystick.get_button(btn) == 1
+                    except:
+                        return False
+                
+                def just_pressed(btn):
+                    current = is_pressed(btn)
+                    previous = self.last_button_state.get(btn, False)
+                    self.last_button_state[btn] = current
+                    return current and not previous
+                
+                # X or A = YES
+                if just_pressed(0) or just_pressed(2):
+                    self.x_button_action()
+                
+                # Y or B = NO
+                if just_pressed(1) or just_pressed(3):
+                    self.y_button_action()
+                
+                # START = restart (from result screen)
+                if just_pressed(7):
+                    if self.game_stage == "result":
+                        self.game_stage = "intro"
+                        self.show_intro()
+                    elif self.game_stage == "intro":
+                        self.start_game()
+        
+        except Exception as e:
+            if "bad window" not in str(e):
+                print(f"Gamepad poll error: {e}")
+        
+        try:
+            self.parent.after(30, self.poll_gamepad)
+        except:
+            pass
 
 # Update the import in main hub to use NostalgiKit version
 CardGuessGame = NostalgiKitCardGame
