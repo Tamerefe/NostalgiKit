@@ -24,6 +24,7 @@ from card_guess_nostalgik import CardGuessGame
 from war_game_nostalgik import WarGame
 from river_game_nostalgik import RiverGame
 from galaxy_war_pat import GalaxyWarPat
+from crakers_nostalgik import CrakersGame
 
 class NostalgiKitHub:
     def __init__(self):
@@ -87,8 +88,18 @@ class NostalgiKitHub:
             {"name": "NUMBER ORACLE", "desc": "Magical Number Quest"},
             {"name": "WAR GAME", "desc": "Turn-Based Combat"},
             {"name": "RIVER PUZZLE", "desc": "Logic Challenge"},
-            {"name": "GALAXY WAR PAT", "desc": "Space Invaders"}
+            {"name": "GALAXY WAR PAT", "desc": "Space Invaders"},
+            {"name": "CRAKERS QUEST", "desc": "Grid Adventure"}
         ]
+        
+        # Game instances - her oyun sadece bir kez oluşturulur
+        self.game_instances = {
+            'card_game': None,
+            'war_game': None,
+            'river_game': None,
+            'galaxy_war': None,
+            'crakers_game': None
+        }
         
         # Battery level (simulation)
         self.battery_level = 3  # 0-4 blocks
@@ -362,6 +373,110 @@ class NostalgiKitHub:
         
         # Key press event handler
         self.root.bind('<Key>', self.on_key_press)
+    
+    def remove_keyboard_bindings(self):
+        """Remove keyboard bindings when game is running"""
+        # Unbind D-Pad keys
+        self.root.unbind('<Up>')
+        self.root.unbind('<Down>')
+        self.root.unbind('<Left>')
+        self.root.unbind('<Right>')
+        self.root.unbind('<w>')
+        self.root.unbind('<s>')
+        self.root.unbind('<a>')
+        self.root.unbind('<d>')
+        
+        # Unbind action buttons (games will handle these)
+        self.root.unbind('<Return>')
+        self.root.unbind('<space>')
+        self.root.unbind('<x>')
+        self.root.unbind('<Escape>')
+        self.root.unbind('<BackSpace>')
+        self.root.unbind('<y>')
+        
+        # Unbind SELECT and START
+        self.root.unbind('<Tab>')
+        
+        # Keep Button-1 and Key bindings for focus management
+        
+    def get_active_game_instance(self):
+        """Return the currently active game object if a game is running"""
+        screen_to_key = {
+            'card_game': 'card_game',
+            'war_game': 'war_game',
+            'river_game': 'river_game',
+            'galaxy_war': 'galaxy_war',
+            'crakers_game': 'crakers_game'
+        }
+        game_key = screen_to_key.get(self.current_screen)
+        if game_key:
+            return self.game_instances.get(game_key)
+        return None
+
+    def simulate_keypress_to_game(self, game, keysym, release_delay=120):
+        """Forward a lightweight keypress event to the active game"""
+        if game is None:
+            return False
+        if hasattr(game, 'on_key_press'):
+            try:
+                event = type('Event', (), {'keysym': keysym, 'char': ''})()
+                game.on_key_press(event)
+                if hasattr(game, 'on_key_release'):
+                    self.root.after(release_delay, lambda: self.safe_key_release(game, keysym))
+                return True
+            except Exception as e:
+                print(f"Forward keypress failed: {e}")
+        return False
+
+    def safe_key_release(self, game, keysym):
+        """Safely forward a key release event if the game supports it"""
+        try:
+            if hasattr(game, 'on_key_release'):
+                event = type('Event', (), {'keysym': keysym, 'char': ''})()
+                game.on_key_release(event)
+        except Exception as e:
+            print(f"Forward key release failed: {e}")
+
+    def safe_stop_move(self, game, method_name):
+        """Call a movement stop method on a game if present"""
+        try:
+            if hasattr(game, method_name):
+                getattr(game, method_name)(False)
+        except Exception as e:
+            print(f"Forward stop move failed: {e}")
+
+    def forward_action_to_game(self, button):
+        """Route X/Y button presses to the active game"""
+        game = self.get_active_game_instance()
+        if not game:
+            return False
+        try:
+            if button == 'x':
+                if hasattr(game, 'x_button_action'):
+                    game.x_button_action()
+                    return True
+                if hasattr(game, 'start_game_from_screen') and hasattr(game, 'game_active'):
+                    if not getattr(game, 'game_active', False):
+                        game.start_game_from_screen()
+                        return True
+                if hasattr(game, 'shoot'):
+                    game.shoot()
+                    return True
+                return self.simulate_keypress_to_game(game, 'Return')
+            if button == 'y':
+                if hasattr(game, 'y_button_action'):
+                    game.y_button_action()
+                    return True
+                if hasattr(game, 'quit_game'):
+                    game.quit_game()
+                    return True
+                if hasattr(game, 'exit_to_hub'):
+                    game.exit_to_hub()
+                    return True
+                return self.simulate_keypress_to_game(game, 'Escape')
+        except Exception as e:
+            print(f"Forward button failed: {e}")
+        return False
         
     def get_battery_display(self):
         """Generate battery display text"""
@@ -456,15 +571,16 @@ class NostalgiKitHub:
                     self.last_button_state[btn_index] = current
                     return current and not previous
                 
-                # Map buttons to actions
-                if button_just_pressed(self.BTN_START):
-                    self.start_action()
-                if button_just_pressed(self.BTN_BACK):
-                    self.select_action()
-                if button_just_pressed(self.BTN_A) or button_just_pressed(self.BTN_X):
-                    self.x_button_action()
-                if button_just_pressed(self.BTN_B) or button_just_pressed(self.BTN_Y):
-                    self.y_button_action()
+                # Map buttons to actions (only in menu, not during games)
+                if self.current_screen == "menu":
+                    if button_just_pressed(self.BTN_START):
+                        self.start_action()
+                    if button_just_pressed(self.BTN_BACK):
+                        self.select_action()
+                    if button_just_pressed(self.BTN_A) or button_just_pressed(self.BTN_X):
+                        self.x_button_action()
+                    if button_just_pressed(self.BTN_B) or button_just_pressed(self.BTN_Y):
+                        self.y_button_action()
                 
                 # --- D-Pad (Hat) Handling ---
                 try:
@@ -473,7 +589,8 @@ class NostalgiKitHub:
                     hat = (0, 0)
                 
                 # Trigger only on state change (edge-trigger)
-                if hat != self.last_hat:
+                # Only handle D-Pad in menu, not during games
+                if self.current_screen == "menu" and hat != self.last_hat:
                     if hat == (0, 1):      # UP
                         self.dpad_action("UP")
                     elif hat == (0, -1):   # DOWN
@@ -482,6 +599,9 @@ class NostalgiKitHub:
                         self.dpad_action("LEFT")
                     elif hat == (1, 0):    # RIGHT
                         self.dpad_action("RIGHT")
+                    self.last_hat = hat
+                elif self.current_screen != "menu":
+                    # Update last_hat even in games to prevent stuck states
                     self.last_hat = hat
         
         except Exception as e:
@@ -497,9 +617,8 @@ class NostalgiKitHub:
         
     def dpad_action(self, direction):
         """Handle D-Pad direction actions"""
-        print(f"D-Pad pressed: {direction}")
-        
         if self.current_screen == "menu":
+            print(f"D-Pad pressed: {direction}")
             if direction == "UP":
                 self.selected_game = (self.selected_game - 1) % len(self.games)
                 self.show_main_menu()
@@ -508,6 +627,51 @@ class NostalgiKitHub:
                 self.selected_game = (self.selected_game + 1) % len(self.games)
                 self.show_main_menu()
                 print(f"Menu selection: {self.selected_game}")
+            return
+
+        # Forward to active game when not in menu
+        game = self.get_active_game_instance()
+        if not game:
+            return
+
+        method_name = f"dpad_{direction.lower()}"
+        if hasattr(game, method_name):
+            try:
+                getattr(game, method_name)()
+                return
+            except Exception as e:
+                print(f"Forward D-Pad to game failed: {e}")
+
+        # Crakers uses dpad_pressed(direction)
+        if hasattr(game, 'dpad_pressed'):
+            try:
+                game.dpad_pressed(direction)
+                return
+            except Exception as e:
+                print(f"Forward D-Pad pressed to game failed: {e}")
+
+        # Galaxy War & similar movement helpers
+        if direction in ("LEFT", "RIGHT") and (hasattr(game, 'set_move_left') or hasattr(game, 'set_move_right')):
+            if direction == "LEFT":
+                try:
+                    if hasattr(game, 'set_move_right'):
+                        game.set_move_right(False)
+                    game.set_move_left(True)
+                    self.root.after(150, lambda: self.safe_stop_move(game, 'set_move_left'))
+                except Exception as e:
+                    print(f"Forward LEFT failed: {e}")
+            else:
+                try:
+                    if hasattr(game, 'set_move_left'):
+                        game.set_move_left(False)
+                    game.set_move_right(True)
+                    self.root.after(150, lambda: self.safe_stop_move(game, 'set_move_right'))
+                except Exception as e:
+                    print(f"Forward RIGHT failed: {e}")
+            return
+
+        key_map = {"UP": "Up", "DOWN": "Down", "LEFT": "Left", "RIGHT": "Right"}
+        self.simulate_keypress_to_game(game, key_map.get(direction, ''))
                 
     def x_button_action(self):
         """Handle X button press"""
@@ -523,8 +687,16 @@ class NostalgiKitHub:
                 self.start_war_game()
             elif self.selected_game == 2:
                 self.start_river_game()
+            elif self.selected_game == 4:
+                self.start_crakers_game()
             elif self.selected_game == 3:
                 self.start_galaxy_war_game()
+        else:
+            self.forward_action_to_game('x')
+
+    def a_button_action(self):
+        """Alias for X button (some controllers map A as confirm)"""
+        self.x_button_action()
                 
     def y_button_action(self):
         """Handle Y button press"""
@@ -532,18 +704,61 @@ class NostalgiKitHub:
             self.show_welcome_screen()
         elif self.current_screen == "welcome":
             self.power_off()
+        else:
+            self.forward_action_to_game('y')
             
     def select_action(self):
         """Handle SELECT button press"""
-        # Could be used for options or settings
-        pass
+        # Return to hub menu from any state
+        if self.current_screen == "welcome":
+            self.show_main_menu()
+            return
+        if self.current_screen == "menu":
+            return
+
+        game = self.get_active_game_instance()
+        if game:
+            try:
+                if hasattr(game, 'exit_to_hub'):
+                    game.exit_to_hub()
+                    return
+                if hasattr(game, 'quit_game'):
+                    game.quit_game()
+                    return
+            except Exception as e:
+                print(f"Select exit to hub failed: {e}")
+
+        # Fallback: force hub UI
+        self.return_to_nostalgik()
         
     def start_action(self):
         """Handle START button press"""
         if self.current_screen == "welcome":
             self.show_main_menu()
         elif self.current_screen == "menu":
-            self.a_button_action()  # Same as X button in menu
+            self.x_button_action()  # Same as X button in menu
+        else:
+            game = self.get_active_game_instance()
+            if not game:
+                return
+            try:
+                # If game inactive and has start screen
+                if hasattr(game, 'game_active') and hasattr(game, 'start_game_from_screen'):
+                    if not getattr(game, 'game_active', False):
+                        game.start_game_from_screen()
+                        return
+                # Pause toggle if available
+                if hasattr(game, 'toggle_pause'):
+                    game.toggle_pause()
+                    return
+                # Generic start
+                if hasattr(game, 'start_game'):
+                    game.start_game()
+                    return
+                # Fallback to Return key simulation
+                self.simulate_keypress_to_game(game, 'Return')
+            except Exception as e:
+                print(f"Start action forward failed: {e}")
             
     def show_blank_screen(self):
         """Show blank screen on startup"""
@@ -679,12 +894,41 @@ class NostalgiKitHub:
         """Start the Card Guess Game"""
         # Stop gamepad polling while game is running
         self.gamepad_polling_active = False
+        print("Starting Number Oracle (card game)...")
         
         # Show loading screen
         self.show_loading_screen("NUMBER ORACLE")
         
         # Launch actual game after brief delay
-        self.root.after(1500, lambda: CardGuessGame(self.root, self.return_to_nostalgik))
+        def launch_game():
+            try:
+                print("Launching Number Oracle now...")
+                # Remove hub keyboard bindings so game can handle input
+                self.remove_keyboard_bindings()
+                # Ekranı temizle
+                self.clear_screen()
+                # Oyun instance yoksa oluştur, varsa tekrar kullan
+                if self.game_instances['card_game'] is None:
+                    self.game_instances['card_game'] = CardGuessGame(self.screen, self.return_to_nostalgik)
+                else:
+                    # Mevcut oyunu göster ve resetle
+                    self.game_instances['card_game'].show()
+                # Track current screen to avoid menu handlers during game
+                self.current_screen = "card_game"
+            except Exception as e:
+                print(f"Failed to launch card game: {e}")
+                try:
+                    messagebox.showerror("Card Game Error", str(e))
+                except Exception:
+                    pass
+                # Return to menu so user isn't stuck
+                self.show_main_menu()
+                self.current_screen = "menu"
+                # Resume gamepad polling for hub
+                self.gamepad_polling_active = True
+        
+        # Shorter delay so it feels instant
+        self.root.after(300, launch_game)
         
     def start_war_game(self):
         """Start the War Game"""
@@ -695,7 +939,21 @@ class NostalgiKitHub:
         self.show_loading_screen("WAR GAME")
         
         # Launch actual game after brief delay
-        self.root.after(1500, lambda: WarGame(self.root, self.return_to_nostalgik))
+        def launch_game():
+            # Remove hub keyboard bindings so game can handle input
+            self.remove_keyboard_bindings()
+            # Ekranı temizle
+            self.clear_screen()
+            # Oyun instance yoksa oluştur, varsa tekrar kullan
+            if self.game_instances['war_game'] is None:
+                self.game_instances['war_game'] = WarGame(self.screen, self.return_to_nostalgik)
+            else:
+                # Mevcut oyunu göster ve resetle
+                self.game_instances['war_game'].show()
+            # Track active screen for input routing
+            self.current_screen = "war_game"
+        
+        self.root.after(1500, launch_game)
         
     def start_river_game(self):
         """Start the River Crossing Game"""
@@ -706,7 +964,21 @@ class NostalgiKitHub:
         self.show_loading_screen("RIVER PUZZLE")
         
         # Launch actual game after brief delay
-        self.root.after(1500, lambda: RiverGame(self.root, self.return_to_nostalgik))
+        def launch_game():
+            # Remove hub keyboard bindings so game can handle input
+            self.remove_keyboard_bindings()
+            # Ekranı temizle
+            self.clear_screen()
+            # Oyun instance yoksa oluştur, varsa tekrar kullan
+            if self.game_instances['river_game'] is None:
+                self.game_instances['river_game'] = RiverGame(self.screen, self.return_to_nostalgik)
+            else:
+                # Mevcut oyunu göster ve resetle
+                self.game_instances['river_game'].show()
+            # Track active screen for input routing
+            self.current_screen = "river_game"
+        
+        self.root.after(1500, launch_game)
 
     def start_galaxy_war_game(self):
         """Start the Galaxy War Pat Game"""
@@ -717,22 +989,57 @@ class NostalgiKitHub:
         self.show_loading_screen("GALAXY WAR PAT")
         
         # Launch actual game after brief delay
-        self.root.after(1500, lambda: GalaxyWarPat(self.root, self.return_to_nostalgik))
+        def launch_game():
+            # Remove hub keyboard bindings so game can handle input
+            self.remove_keyboard_bindings()
+            # Ekranı temizle
+            self.clear_screen()
+            # Oyun instance yoksa oluştur, varsa tekrar kullan
+            if self.game_instances['galaxy_war'] is None:
+                self.game_instances['galaxy_war'] = GalaxyWarPat(self.screen, self.return_to_nostalgik)
+            else:
+                # Mevcut oyunu göster ve resetle
+                self.game_instances['galaxy_war'].show()
+            # Track active screen for input routing
+            self.current_screen = "galaxy_war"
+        
+        self.root.after(1500, launch_game)
+
+    def start_crakers_game(self):
+        """Start the Crakers Quest Game"""
+        # Stop gamepad polling while game is running
+        self.gamepad_polling_active = False
+        
+        # Show loading screen
+        self.show_loading_screen("CRAKERS QUEST")
+        
+        # Launch actual game after brief delay
+        def launch_game():
+            # Remove hub keyboard bindings so game can handle input
+            self.remove_keyboard_bindings()
+            # Ekranı temizle
+            self.clear_screen()
+            # Oyun instance yoksa oluştur, varsa tekrar kullan
+            if self.game_instances['crakers_game'] is None:
+                self.game_instances['crakers_game'] = CrakersGame(self.screen, self.return_to_nostalgik)
+            else:
+                # Mevcut oyunu göster ve resetle
+                self.game_instances['crakers_game'].show()
+            # Track active screen for input routing
+            self.current_screen = "crakers_game"
+        
+        self.root.after(1500, launch_game)
 
     def return_to_nostalgik(self):
         """Return to NostalgiKit interface"""
-        # Restore NostalgiKit window size and properties (updated to match new size)
-        self.root.geometry("460x720")
-        self.root.configure(bg=self.colors['nostalgik_cream'])
-        self.root.resizable(False, False)
+        # Clear only the screen area (not the entire root)
+        self.clear_screen()
         
-        # Recreate the interface
-        for widget in self.root.winfo_children():
-            widget.destroy()
-            
-        self.setup_nostalgik_interface()
-        self.setup_keyboard_bindings()
+        # Show main menu
         self.show_main_menu()
+        
+        # Re-enable hub keyboard bindings
+        self.setup_keyboard_bindings()
         
         # Restart gamepad polling
         if self.gamepad_enabled and not self.gamepad_polling_active:

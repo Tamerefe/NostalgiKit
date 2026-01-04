@@ -65,23 +65,28 @@ class NostalgiKitRiverGame:
         }
         
     def setup_retro_interface(self):
-        """Transform window to NostalgiKit style"""
-        # Clear parent and setup NostalgiKit dimensions (matching game hub size)
-        for widget in self.parent.winfo_children():
-            widget.destroy()
-            
-        self.parent.geometry("460x720")
-        self.parent.configure(bg=self.colors['NostalgiKit_cream'])
-        self.parent.resizable(False, False)
+        """Create game interface inside hub's screen frame"""
+        # Destroy previous game frame if it exists
+        if hasattr(self, 'game_frame') and self.game_frame.winfo_exists():
+            self.game_frame.destroy()
         
-        # Setup keyboard bindings
-        self.parent.focus_set()
-        self.parent.bind('<Key>', self.on_key_press)
-        self.parent.bind('<Button-1>', lambda e: self.parent.focus_set())
+        # Create main game frame inside hub's screen (parent is now the screen frame)
+        self.game_frame = tk.Frame(self.parent, bg=self.colors['screen_green'])
+        self.game_frame.pack(fill='both', expand=True)
         
-        # Main NostalgiKit frame (larger with more padding)
-        retro_frame = tk.Frame(self.parent, bg=self.colors['NostalgiKit_cream'], relief='raised', bd=3)
-        retro_frame.pack(fill='both', expand=True, padx=18, pady=18)
+        # The screen is the game frame itself
+        self.screen = self.game_frame
+        
+        # Setup keyboard bindings to root window
+        root = self.parent.winfo_toplevel()
+        root.focus_set()
+        root.bind('<Key>', self.on_key_press)
+        root.bind('<Button-1>', lambda e: root.focus_set())
+        
+        # Start game
+        self.show_intro()
+    
+    def create_retro_controls(self, parent):
         
         # Top section with branding area (taller for larger console)
         top_frame = tk.Frame(retro_frame, bg=self.colors['NostalgiKit_cream'], height=50)
@@ -127,151 +132,9 @@ class NostalgiKitRiverGame:
         # Controls
         self.create_retro_controls(retro_frame)
         
-        # Start with intro
+        # Start game
         self.show_intro()
-        
-    def create_retro_controls(self, parent):
-        """Create NostalgiKit style controls"""
-        control_frame = tk.Frame(parent, bg=self.colors['NostalgiKit_cream'])
-        control_frame.pack(fill='x', padx=25, pady=(0, 18))
-        
-        # Control layout
-        controls_layout = tk.Frame(control_frame, bg=self.colors['NostalgiKit_cream'])
-        controls_layout.pack()
-        
-        # D-Pad (left side) - more spacing
-        dpad_frame = tk.Frame(controls_layout, bg=self.colors['NostalgiKit_cream'])
-        dpad_frame.pack(side='left', padx=(0, 60))
-        
-        # Action buttons (right side)
-        button_frame = tk.Frame(controls_layout, bg=self.colors['NostalgiKit_cream'])
-        button_frame.pack(side='right')
-        
-        # Create D-Pad
-        self.create_dpad(dpad_frame)
-        
-        # X and Y buttons
-        self.x_button = tk.Button(button_frame,
-                                 text="X",
-                                 font=self.fonts['retro_text'],
-                                 bg=self.colors['red_button'],
-                                 fg='white',
-                                 relief='raised',
-                                 bd=3,
-                                 width=4,
-                                 height=2,
-                                 command=self.x_button_action,
-                                 takefocus=False)
-        self.x_button.pack(side='right', padx=5)
-        
-        self.y_button = tk.Button(button_frame,
-                                 text="Y",
-                                 font=self.fonts['retro_text'],
-                                 bg=self.colors['purple_button'],
-                                 fg='white',
-                                 relief='raised',
-                                 bd=3,
-                                 width=4,
-                                 height=2,
-                                 command=self.y_button_action,
-                                 takefocus=False)
-        self.y_button.pack(side='right', padx=5)
-        
-        # Bottom row controls - more spacing
-        bottom_controls = tk.Frame(control_frame, bg=self.colors['NostalgiKit_cream'])
-        bottom_controls.pack(pady=(25, 0))
-        
-        select_btn = tk.Button(bottom_controls,
-                              text="SELECT",
-                              font=self.fonts['retro_small'],
-                              bg=self.colors['button_gray'],
-                              fg=self.colors['text_dark'],
-                              relief='raised',
-                              bd=2,
-                              padx=8,
-                              pady=3,
-                              command=self.return_callback,
-                              takefocus=False)
-        select_btn.pack(side='left', padx=10)
-        
-        start_btn = tk.Button(bottom_controls,
-                             text="START",
-                             font=self.fonts['retro_small'],
-                             bg=self.colors['button_gray'],
-                             fg=self.colors['text_dark'],
-                             relief='raised',
-                             bd=2,
-                             padx=8,
-                             pady=3,
-                             command=self.start_game,
-                             takefocus=False)
-        start_btn.pack(side='left', padx=10)
-        
-    def create_dpad(self, parent):
-        """Create D-Pad controller"""
-        dpad_container = tk.Frame(parent, bg=self.colors['NostalgiKit_cream'])
-        dpad_container.pack()
-        
-        # D-Pad buttons arranged in cross pattern
-        # Top
-        up_btn = tk.Button(dpad_container,
-                          text="▲",
-                          font=self.fonts['retro_text'],
-                          bg=self.colors['button_gray'],
-                          fg=self.colors['text_dark'],
-                          relief='raised',
-                          bd=3,
-                          width=3,
-                          height=1,
-                          command=lambda: self.dpad_up(),
-                          takefocus=False)
-        up_btn.grid(row=0, column=1, padx=1, pady=1)
-        
-        # Left, Center, Right
-        left_btn = tk.Button(dpad_container,
-                            text="◄",
-                            font=self.fonts['retro_text'],
-                            bg=self.colors['button_gray'],
-                            fg=self.colors['text_dark'],
-                            relief='raised',
-                            bd=3,
-                            width=3,
-                            height=1,
-                            command=lambda: self.dpad_left(),
-                            takefocus=False)
-        left_btn.grid(row=1, column=0, padx=1, pady=1)
-        
-        center_frame = tk.Frame(dpad_container, bg=self.colors['button_gray'], width=30, height=20, relief='sunken', bd=1)
-        center_frame.grid(row=1, column=1, padx=1, pady=1)
-        center_frame.grid_propagate(False)
-        
-        right_btn = tk.Button(dpad_container,
-                             text="►",
-                             font=self.fonts['retro_text'],
-                             bg=self.colors['button_gray'],
-                             fg=self.colors['text_dark'],
-                             relief='raised',
-                             bd=3,
-                             width=3,
-                             height=1,
-                             command=lambda: self.dpad_right(),
-                             takefocus=False)
-        right_btn.grid(row=1, column=2, padx=1, pady=1)
-        
-        # Bottom
-        down_btn = tk.Button(dpad_container,
-                            text="▼",
-                            font=self.fonts['retro_text'],
-                            bg=self.colors['button_gray'],
-                            fg=self.colors['text_dark'],
-                            relief='raised',
-                            bd=3,
-                            width=3,
-                            height=1,
-                            command=lambda: self.dpad_down(),
-                            takefocus=False)
-        down_btn.grid(row=2, column=1, padx=1, pady=1)
-        
+    
     def on_key_press(self, event):
         """Handle keyboard input"""
         key = event.keysym.lower()
@@ -680,7 +543,7 @@ alone together!"""
         title_label.pack(pady=10)
         
         # Stats
-        stats_text = f"Completed in\\n{self.move_count} moves!"
+        stats_text = f"Completed in{self.move_count} moves!"
         stats_label = tk.Label(content,
                               text=stats_text,
                               font=self.fonts['retro_text'],
@@ -691,13 +554,13 @@ alone together!"""
         
         # Performance rating
         if self.move_count <= 7:
-            rating = "PERFECT!\\nOptimal solution!"
+            rating = "PERFECT! Optimal solution!"
         elif self.move_count <= 10:
-            rating = "EXCELLENT!\\nVery efficient!"
+            rating = "EXCELLENT! Very efficient!"
         elif self.move_count <= 15:
-            rating = "GOOD!\\nWell done!"
+            rating = "GOOD! Well done!"
         else:
-            rating = "COMPLETED!\\nGreat job!"
+            rating = "COMPLETED! Great job!"
             
         rating_label = tk.Label(content,
                                text=rating,
@@ -806,5 +669,25 @@ alone together!"""
             self.parent.after(30, self.poll_gamepad)
         except:
             pass
+    
+    def show(self):
+        """Show game again (reuse instance)"""
+        # Oyun durumunu sıfırla
+        self.west_side = ["Farmer", "Wolf", "Goat", "Cabbage"]
+        self.east_side = []
+        self.boat_position = "west"
+        self.boat_contents = []
+        self.game_won = False
+        self.move_count = 0
+        self.selected_item = 0
+        
+        # Interface'i yeniden oluştur
+        self.setup_retro_interface()
+        
+        # Gamepad'i yeniden başlat
+        if self.gamepad_enabled:
+            self.gamepad_polling_active = True
+            self.parent.after(100, self.poll_gamepad)
+
 # Update the import
 RiverGame = NostalgiKitRiverGame

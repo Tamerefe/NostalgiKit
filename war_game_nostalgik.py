@@ -126,73 +126,28 @@ class NostalgiKitWarGame:
         }
         
     def setup_retro_interface(self):
-        """Transform window to NostalgiKit style"""
-        # Clear parent and setup NostalgiKit dimensions (matching game hub size)
-        for widget in self.parent.winfo_children():
-            widget.destroy()
-            
-        self.parent.geometry("460x720")
-        self.parent.configure(bg=self.colors['NostalgiKit_cream'])
-        self.parent.resizable(False, False)
+        """Create game interface inside hub's screen frame"""
+        # Destroy previous game frame if it exists
+        if hasattr(self, 'game_frame') and self.game_frame.winfo_exists():
+            self.game_frame.destroy()
         
-        # Setup keyboard bindings
-        self.parent.focus_set()
-        self.parent.bind('<Key>', self.on_key_press)
-        self.parent.bind('<Button-1>', lambda e: self.parent.focus_set())
+        # Create main game frame inside hub's screen (parent is now the screen frame)
+        self.game_frame = tk.Frame(self.parent, bg=self.colors['screen_green'])
+        self.game_frame.pack(fill='both', expand=True)
         
-        # Main NostalgiKit frame (larger with more padding)
-        retro_frame = tk.Frame(self.parent, bg=self.colors['NostalgiKit_cream'], relief='raised', bd=3)
-        retro_frame.pack(fill='both', expand=True, padx=18, pady=18)
+        # The screen is the game frame itself
+        self.screen = self.game_frame
         
-        # Top section with branding area (taller for larger console)
-        top_frame = tk.Frame(retro_frame, bg=self.colors['NostalgiKit_cream'], height=50)
-        top_frame.pack(fill='x', pady=(12, 8))
-        top_frame.pack_propagate(False)
-        
-        # NostalgiKit branding
-        brand_label = tk.Label(top_frame,
-                              text="NostalgiKit",
-                              font=self.fonts['retro_title'],
-                              fg=self.colors['text_dark'],
-                              bg=self.colors['NostalgiKit_cream'])
-        brand_label.pack()
-        
-        # Model designation  
-        NostalgiKit_label = tk.Label(top_frame,
-                                text="WAR GAME",
-                                font=self.fonts['retro_small'],
-                                fg=self.colors['text_dark'],
-                                bg=self.colors['NostalgiKit_cream'])
-        NostalgiKit_label.pack()
-        
-        # Screen frame (larger with more padding)
-        screen_frame = tk.Frame(retro_frame, bg=self.colors['dark_green'], relief='sunken', bd=3)
-        screen_frame.pack(fill='both', expand=True, padx=25, pady=12)
-        
-        # Screen label
-        screen_label_frame = tk.Frame(screen_frame, bg=self.colors['dark_green'], height=25)
-        screen_label_frame.pack(fill='x', padx=12, pady=6)
-        screen_label_frame.pack_propagate(False)
-        
-        screen_info = tk.Label(screen_label_frame,
-                              text="DOT MATRIX WITH STEREO SOUND",
-                              font=self.fonts['retro_tiny'],
-                              fg=self.colors['NostalgiKit_cream'],
-                              bg=self.colors['dark_green'])
-        screen_info.pack()
-        
-        # Actual screen (larger padding)
-        self.screen = tk.Frame(screen_frame, bg=self.colors['screen_green'], relief='sunken', bd=2)
-        self.screen.pack(fill='both', expand=True, padx=12, pady=(0, 12))
-        
-        # Controls
-        self.create_retro_controls(retro_frame)
+        # Setup keyboard bindings to root window
+        root = self.parent.winfo_toplevel()
+        root.focus_set()
+        root.bind('<Key>', self.on_key_press)
+        root.bind('<Button-1>', lambda e: root.focus_set())
         
         # Start with intro
         self.show_intro()
         
         # Gamepad initialization will happen after this
-    
     def init_gamepad(self):
         """Initialize gamepad support"""
         try:
@@ -203,6 +158,7 @@ class NostalgiKitWarGame:
             
             self.joystick = None
             self.gamepad_enabled = True
+            self.gamepad_polling_active = True
             self.last_button_state = {}
             self.last_hat = (0, 0)
             
@@ -210,18 +166,23 @@ class NostalgiKitWarGame:
                 self.joystick = pygame.joystick.Joystick(0)
                 self.joystick.init()
             
-            self.parent.after(30, self.poll_gamepad)
+            # Start gamepad polling with root window
+            root = self.parent.winfo_toplevel()
+            root.after(30, self.poll_gamepad)
+        except KeyboardInterrupt:
+            # Re-raise KeyboardInterrupt to allow proper program termination
+            raise
         except Exception as e:
             print(f"Gamepad init error: {e}")
             self.gamepad_enabled = False
     
     def poll_gamepad(self):
         """Poll gamepad input"""
-        if not self.gamepad_enabled:
+        if not self.gamepad_enabled or not self.gamepad_polling_active:
             return
         
         try:
-            self.parent.winfo_exists()
+            self.parent.winfo_toplevel().winfo_exists()
         except:
             return
         
@@ -264,157 +225,20 @@ class NostalgiKitWarGame:
                 except:
                     pass
         
+        except KeyboardInterrupt:
+            # Stop polling and re-raise to allow proper program termination
+            self.gamepad_polling_active = False
+            raise
         except Exception as e:
             if "bad window" not in str(e):
                 print(f"Gamepad poll error: {e}")
         
         try:
-            self.parent.after(30, self.poll_gamepad)
+            root = self.parent.winfo_toplevel()
+            root.after(30, self.poll_gamepad)
         except:
             pass
     
-    def create_retro_controls(self, parent):
-        """Create NostalgiKit style controls"""
-        control_frame = tk.Frame(parent, bg=self.colors['NostalgiKit_cream'])
-        control_frame.pack(fill='x', padx=20, pady=(0, 15))
-        
-        # Button layout
-        button_layout = tk.Frame(control_frame, bg=self.colors['NostalgiKit_cream'])
-        button_layout.pack()
-        
-        # D-Pad (left side)
-        dpad_frame = tk.Frame(button_layout, bg=self.colors['NostalgiKit_cream'])
-        dpad_frame.pack(side='left', padx=(0, 50))
-        
-        # Action buttons (right side)
-        button_frame = tk.Frame(button_layout, bg=self.colors['NostalgiKit_cream'])
-        button_frame.pack(side='right')
-        
-        # Create D-Pad
-        self.create_dpad(dpad_frame)
-        
-        # X and Y buttons
-        self.x_button = tk.Button(button_frame,
-                                 text="X",
-                                 font=self.fonts['retro_text'],
-                                 bg=self.colors['red_button'],
-                                 fg='white',
-                                 relief='raised',
-                                 bd=3,
-                                 width=4,
-                                 height=2,
-                                 command=self.x_button_action,
-                                 takefocus=False)
-        self.x_button.pack(side='right', padx=5)
-        
-        self.y_button = tk.Button(button_frame,
-                                 text="Y",
-                                 font=self.fonts['retro_text'],
-                                 bg=self.colors['purple_button'],
-                                 fg='white',
-                                 relief='raised',
-                                 bd=3,
-                                 width=4,
-                                 height=2,
-                                 command=self.y_button_action,
-                                 takefocus=False)
-        self.y_button.pack(side='right', padx=5)
-        
-        # Bottom control buttons
-        bottom_controls = tk.Frame(control_frame, bg=self.colors['NostalgiKit_cream'])
-        bottom_controls.pack(pady=(20, 0))
-        
-        select_btn = tk.Button(bottom_controls,
-                              text="SELECT",
-                              font=self.fonts['retro_small'],
-                              bg=self.colors['button_gray'],
-                              fg=self.colors['text_dark'],
-                              relief='raised',
-                              bd=2,
-                              padx=8,
-                              pady=3,
-                              command=self.return_callback,
-                              takefocus=False)
-        select_btn.pack(side='left', padx=10)
-        
-        start_btn = tk.Button(bottom_controls,
-                             text="START",
-                             font=self.fonts['retro_small'],
-                             bg=self.colors['button_gray'],
-                             fg=self.colors['text_dark'],
-                             relief='raised',
-                             bd=2,
-                             padx=8,
-                             pady=3,
-                             command=self.start_battle,
-                             takefocus=False)
-        start_btn.pack(side='left', padx=10)
-        
-    def create_dpad(self, parent):
-        """Create D-Pad controller"""
-        dpad_container = tk.Frame(parent, bg=self.colors['NostalgiKit_cream'])
-        dpad_container.pack()
-        
-        # D-Pad buttons arranged in cross pattern
-        # Top
-        up_btn = tk.Button(dpad_container,
-                          text="▲",
-                          font=self.fonts['retro_text'],
-                          bg=self.colors['button_gray'],
-                          fg=self.colors['text_dark'],
-                          relief='raised',
-                          bd=3,
-                          width=3,
-                          height=1,
-                          command=lambda: self.dpad_up(),
-                          takefocus=False)
-        up_btn.grid(row=0, column=1, padx=1, pady=1)
-        
-        # Left, Center, Right
-        left_btn = tk.Button(dpad_container,
-                            text="◄",
-                            font=self.fonts['retro_text'],
-                            bg=self.colors['button_gray'],
-                            fg=self.colors['text_dark'],
-                            relief='raised',
-                            bd=3,
-                            width=3,
-                            height=1,
-                            command=lambda: self.dpad_left(),
-                            takefocus=False)
-        left_btn.grid(row=1, column=0, padx=1, pady=1)
-        
-        center_frame = tk.Frame(dpad_container, bg=self.colors['button_gray'], width=30, height=20, relief='sunken', bd=1)
-        center_frame.grid(row=1, column=1, padx=1, pady=1)
-        center_frame.grid_propagate(False)
-        
-        right_btn = tk.Button(dpad_container,
-                             text="►",
-                             font=self.fonts['retro_text'],
-                             bg=self.colors['button_gray'],
-                             fg=self.colors['text_dark'],
-                             relief='raised',
-                             bd=3,
-                             width=3,
-                             height=1,
-                             command=lambda: self.dpad_right(),
-                             takefocus=False)
-        right_btn.grid(row=1, column=2, padx=1, pady=1)
-        
-        # Bottom
-        down_btn = tk.Button(dpad_container,
-                            text="▼",
-                            font=self.fonts['retro_text'],
-                            bg=self.colors['button_gray'],
-                            fg=self.colors['text_dark'],
-                            relief='raised',
-                            bd=3,
-                            width=3,
-                            height=1,
-                            command=lambda: self.dpad_down(),
-                            takefocus=False)
-        down_btn.grid(row=2, column=1, padx=1, pady=1)
-        
     def on_key_press(self, event):
         """Handle keyboard input"""
         key = event.keysym.lower()
@@ -774,11 +598,11 @@ SPECIAL: {char_data['special']['name']}
         
         if self.player_hp <= 0:
             result_text = "DEFEAT!"
-            detail_text = f"{self.enemy_name} wins\\nthe battle!"
+            detail_text = f"{self.enemy_name} wins the battle!"
             self.losses += 1
         else:
             result_text = "VICTORY!"
-            detail_text = f"You defeated\\n{self.enemy_name}!"
+            detail_text = f"You defeated {self.enemy_name}!"
             self.wins += 1
             
         result_label = tk.Label(result_frame,
@@ -797,7 +621,7 @@ SPECIAL: {char_data['special']['name']}
         detail_label.pack(pady=5)
         
         # Battle stats
-        stats_text = f"Rounds: {self.battle_round}\\nRecord: {self.wins}W-{self.losses}L"
+        stats_text = f"Rounds: {self.battle_round} Record: {self.wins}W-{self.losses}L"
         stats_label = tk.Label(result_frame,
                               text=stats_text,
                               font=self.fonts['retro_tiny'],
@@ -1014,6 +838,37 @@ SPECIAL: {char_data['special']['name']}
         """Clear the screen"""
         for widget in self.screen.winfo_children():
             widget.destroy()
+    
+    def show(self):
+        """Show game again (reuse instance)"""
+        # Oyun durumunu sıfırla
+        self.current_screen = "character_select"
+        self.selected_character = 0
+        self.player_class = None
+        self.player_hp = 0
+        self.player_max_hp = 0
+        self.enemy_hp = 0
+        self.enemy_max_hp = 0
+        self.enemy_name = ""
+        self.enemy_class = None
+        self.defending = False
+        self.enemy_defending = False
+        self.battle_log = []
+        self.selected_action = 0
+        self.game_over = False
+        self.battle_round = 1
+        self.special_cooldown = 0
+        self.wins = 0
+        self.losses = 0
+        
+        # Interface'i yeniden oluştur
+        self.setup_retro_interface()
+        
+        # Gamepad'i yeniden başlat
+        if self.gamepad_enabled:
+            self.gamepad_polling_active = True
+            root = self.parent.winfo_toplevel()
+            root.after(100, self.poll_gamepad)
 
 # Update the import
 WarGame = NostalgiKitWarGame

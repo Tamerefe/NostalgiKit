@@ -62,132 +62,41 @@ class NostalgiKitCardGame:
         }
         
     def setup_retro_interface(self):
-        """Transform window to NostalgiKit style"""
-        # Clear parent and setup NostalgiKit dimensions (matching game hub size)
-        for widget in self.parent.winfo_children():
-            widget.destroy()
-            
-        self.parent.geometry("460x720")
-        self.parent.configure(bg=self.colors['NostalgiKit_cream'])
-        self.parent.resizable(False, False)
+        """Create game interface inside hub's screen frame"""
+        # Destroy previous game frame if it exists
+        if hasattr(self, 'game_frame') and self.game_frame.winfo_exists():
+            self.game_frame.destroy()
         
-        # Main NostalgiKit frame (larger with more padding)
-        retro_frame = tk.Frame(self.parent, bg=self.colors['NostalgiKit_cream'], relief='raised', bd=3)
-        retro_frame.pack(fill='both', expand=True, padx=18, pady=18)
+        # Create main game frame inside hub's screen (parent is now the screen frame)
+        self.game_frame = tk.Frame(self.parent, bg=self.colors['screen_green'])
+        self.game_frame.pack(fill='both', expand=True)
         
-        # Top section with branding area (taller for larger console)
-        top_frame = tk.Frame(retro_frame, bg=self.colors['NostalgiKit_cream'], height=50)
-        top_frame.pack(fill='x', pady=(12, 8))
-        top_frame.pack_propagate(False)
+        # The screen is the game frame itself
+        self.screen = self.game_frame
         
-        # NostalgiKit branding
-        brand_label = tk.Label(top_frame,
-                              text="NostalgiKit",
-                              font=self.fonts['retro_title'],
-                              fg=self.colors['text_dark'],
-                              bg=self.colors['NostalgiKit_cream'])
-        brand_label.pack()
-        
-        # Model designation  
-        NostalgiKit_label = tk.Label(top_frame,
-                                text="NUMBER ORACLE",
-                                font=self.fonts['retro_small'],
-                                fg=self.colors['text_dark'],
-                                bg=self.colors['NostalgiKit_cream'])
-        NostalgiKit_label.pack()
-        
-        # Screen frame (larger with more padding)
-        screen_frame = tk.Frame(retro_frame, bg=self.colors['dark_green'], relief='sunken', bd=3)
-        screen_frame.pack(fill='both', expand=True, padx=25, pady=12)
-        
-        # Screen label
-        screen_label_frame = tk.Frame(screen_frame, bg=self.colors['dark_green'], height=25)
-        screen_label_frame.pack(fill='x', padx=12, pady=6)
-        screen_label_frame.pack_propagate(False)
-        
-        screen_info = tk.Label(screen_label_frame,
-                              text="DOT MATRIX WITH STEREO SOUND",
-                              font=self.fonts['retro_tiny'],
-                              fg=self.colors['NostalgiKit_cream'],
-                              bg=self.colors['dark_green'])
-        screen_info.pack()
-        
-        # Actual screen (larger padding)
-        self.screen = tk.Frame(screen_frame, bg=self.colors['screen_green'], relief='sunken', bd=2)
-        self.screen.pack(fill='both', expand=True, padx=12, pady=(0, 12))
-        
-        # Controls
-        self.create_retro_controls(retro_frame)
+        # Setup keyboard bindings to root window
+        root = self.parent.winfo_toplevel()
+        root.focus_set()
+        root.bind('<Key>', self.on_key_press)
+        root.bind('<Button-1>', lambda e: root.focus_set())
         
         # Start game
         self.show_intro()
+
+    def on_key_press(self, event):
+        """Handle keyboard input for the card guess game"""
+        key = event.keysym.lower()
         
-    def create_retro_controls(self, parent):
-        """Create NostalgiKit style controls"""
-        control_frame = tk.Frame(parent, bg=self.colors['NostalgiKit_cream'])
-        control_frame.pack(fill='x', padx=20, pady=(0, 15))
-        
-        # Button layout
-        button_layout = tk.Frame(control_frame, bg=self.colors['NostalgiKit_cream'])
-        button_layout.pack()
-        
-        # Action buttons
-        button_frame = tk.Frame(button_layout, bg=self.colors['NostalgiKit_cream'])
-        button_frame.pack(side='right', padx=(50, 0))
-        
-        # X and Y buttons
-        self.x_button = tk.Button(button_frame,
-                                 text="X",
-                                 font=self.fonts['retro_text'],
-                                 bg=self.colors['red_button'],
-                                 fg='white',
-                                 relief='raised',
-                                 bd=3,
-                                 width=4,
-                                 height=2,
-                                 command=self.x_button_action)
-        self.x_button.pack(side='right', padx=5)
-        
-        self.y_button = tk.Button(button_frame,
-                                 text="Y",
-                                 font=self.fonts['retro_text'],
-                                 bg=self.colors['purple_button'],
-                                 fg='white',
-                                 relief='raised',
-                                 bd=3,
-                                 width=4,
-                                 height=2,
-                                 command=self.y_button_action)
-        self.y_button.pack(side='right', padx=5)
-        
-        # Bottom control buttons
-        bottom_controls = tk.Frame(control_frame, bg=self.colors['NostalgiKit_cream'])
-        bottom_controls.pack(pady=(20, 0))
-        
-        select_btn = tk.Button(bottom_controls,
-                              text="SELECT",
-                              font=self.fonts['retro_small'],
-                              bg=self.colors['button_gray'],
-                              fg=self.colors['text_dark'],
-                              relief='raised',
-                              bd=2,
-                              padx=8,
-                              pady=3,
-                              command=self.return_callback)
-        select_btn.pack(side='left', padx=10)
-        
-        start_btn = tk.Button(bottom_controls,
-                             text="START",
-                             font=self.fonts['retro_small'],
-                             bg=self.colors['button_gray'],
-                             fg=self.colors['text_dark'],
-                             relief='raised',
-                             bd=2,
-                             padx=8,
-                             pady=3,
-                             command=self.start_game)
-        start_btn.pack(side='left', padx=10)
-        
+        # YES actions
+        if key in ['return', 'space', 'x']:
+            self.x_button_action()
+        # NO / back actions
+        elif key in ['escape', 'backspace', 'y']:
+            self.y_button_action()
+        # Quick exit to hub
+        elif key in ['tab']:
+            self.return_callback()
+    
     def show_intro(self):
         """Show game introduction"""
         self.clear_screen()
@@ -425,24 +334,28 @@ to begin!"""
             
             self.joystick = None
             self.gamepad_enabled = True
+            self.gamepad_polling_active = True
             self.last_button_state = {}
             
             if pygame.joystick.get_count() > 0:
                 self.joystick = pygame.joystick.Joystick(0)
                 self.joystick.init()
             
-            self.parent.after(30, self.poll_gamepad)
+            self.parent.winfo_toplevel().after(30, self.poll_gamepad)
+        except KeyboardInterrupt:
+            # Re-raise KeyboardInterrupt to allow proper program termination
+            raise
         except Exception as e:
             print(f"Gamepad init error: {e}")
             self.gamepad_enabled = False
     
     def poll_gamepad(self):
         """Poll gamepad input"""
-        if not self.gamepad_enabled:
+        if not self.gamepad_enabled or not self.gamepad_polling_active:
             return
         
         try:
-            self.parent.winfo_exists()
+            self.parent.winfo_toplevel().winfo_exists()
         except:
             return
         
@@ -478,14 +391,32 @@ to begin!"""
                     elif self.game_stage == "intro":
                         self.start_game()
         
+        except KeyboardInterrupt:
+            # Stop polling and re-raise to allow proper program termination
+            raise
         except Exception as e:
             if "bad window" not in str(e):
                 print(f"Gamepad poll error: {e}")
         
         try:
-            self.parent.after(30, self.poll_gamepad)
+            self.parent.winfo_toplevel().after(30, self.poll_gamepad)
         except:
             pass
+    
+    def show(self):
+        """Show game again (reuse instance)"""
+        # Oyunu sıfırla ve interface'i yeniden oluştur
+        self.guessed_numbers = set(range(1, 21))
+        self.current_card_index = 0
+        self.game_stage = "intro"
+        
+        # Interface'i yeniden oluştur
+        self.setup_retro_interface()
+        
+        # Gamepad'i yeniden başlat
+        if self.gamepad_enabled:
+            self.gamepad_polling_active = True
+            self.parent.winfo_toplevel().after(100, self.poll_gamepad)
 
 # Update the import in main hub to use NostalgiKit version
 CardGuessGame = NostalgiKitCardGame

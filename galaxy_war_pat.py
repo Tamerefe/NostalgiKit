@@ -19,8 +19,8 @@ class GalaxyWarPat:
         self.return_callback = return_callback
         
         # Game configuration
-        self.canvas_width = 360
-        self.canvas_height = 330
+        self.canvas_width = 330
+        self.canvas_height = 290
         self.player_speed = 15
         self.bullet_speed = 20
         self.enemy_speed = 2
@@ -88,63 +88,17 @@ class GalaxyWarPat:
         self.show_start_screen()
         
     def setup_game_screen(self):
-        """Create the game interface in NostalgiKit style"""
-        # Clear parent
-        for widget in self.parent.winfo_children():
-            widget.destroy()
-            
-        # Setup NostalgiKit dimensions
-        self.parent.geometry("460x720")
-        self.parent.configure(bg=self.colors['nostalgik_cream'])
-        self.parent.resizable(False, False)
+        """Create the game interface inside hub's screen frame"""
+        # Destroy previous game frame if it exists
+        if hasattr(self, 'game_frame') and self.game_frame.winfo_exists():
+            self.game_frame.destroy()
         
-        # Main NostalgiKit frame
-        retro_frame = tk.Frame(self.parent, bg=self.colors['nostalgik_cream'], relief='raised', bd=3)
-        retro_frame.pack(fill='both', expand=True, padx=18, pady=18)
-        
-        # Top section with branding
-        top_frame = tk.Frame(retro_frame, bg=self.colors['nostalgik_cream'], height=50)
-        top_frame.pack(fill='x', pady=(12, 8))
-        top_frame.pack_propagate(False)
-        
-        # NostalgiKit branding
-        brand_label = tk.Label(top_frame,
-                              text="NostalgiKit",
-                              font=self.fonts['retro_title'],
-                              fg=self.colors['text_dark'],
-                              bg=self.colors['nostalgik_cream'])
-        brand_label.pack()
-        
-        # Game title
-        game_label = tk.Label(top_frame,
-                             text="GALAXY WAR PAT",
-                             font=self.fonts['retro_small'],
-                             fg=self.colors['text_dark'],
-                             bg=self.colors['nostalgik_cream'])
-        game_label.pack()
-        
-        # Screen frame
-        screen_frame = tk.Frame(retro_frame, bg=self.colors['dark_green'], relief='sunken', bd=3)
-        screen_frame.pack(fill='both', expand=True, padx=25, pady=12)
-        
-        # Screen label
-        screen_label_frame = tk.Frame(screen_frame, bg=self.colors['dark_green'], height=25)
-        screen_label_frame.pack(fill='x', padx=12, pady=6)
-        screen_label_frame.pack_propagate(False)
-        
-        screen_info = tk.Label(screen_label_frame,
-                              text="DOT MATRIX WITH STEREO SOUND",
-                              font=self.fonts['retro_tiny'],
-                              fg=self.colors['nostalgik_cream'],
-                              bg=self.colors['dark_green'])
-        screen_info.pack()
-        
-        # Game display container
-        game_container = tk.Frame(screen_frame, bg=self.colors['screen_green'])
-        game_container.pack(fill='both', expand=True, padx=12, pady=(0, 12))
+        # Create main game frame inside hub's screen (parent is now the screen frame)
+        self.game_frame = tk.Frame(self.parent, bg=self.colors['screen_green'])
+        self.game_frame.pack(fill='both', expand=True)
         
         # HUD (Score, Wave, Lives)
-        hud_frame = tk.Frame(game_container, bg=self.colors['screen_dark'], height=30)
+        hud_frame = tk.Frame(self.game_frame, bg=self.colors['screen_dark'], height=30)
         hud_frame.pack(fill='x', padx=2, pady=2)
         hud_frame.pack_propagate(False)
         
@@ -170,172 +124,27 @@ class GalaxyWarPat:
         self.lives_label.pack(side='right', padx=5)
         
         # Game canvas
-        self.canvas = tk.Canvas(game_container,
+        self.canvas = tk.Canvas(self.game_frame,
                                width=self.canvas_width,
                                height=self.canvas_height,
                                bg=self.colors['screen_dark'],
                                highlightthickness=0)
-        self.canvas.pack(padx=2, pady=2)
-        
-        # Controls
-        self.create_retro_controls(retro_frame)
-        
-    def create_retro_controls(self, parent):
-        """Create NostalgiKit style controls"""
-        control_frame = tk.Frame(parent, bg=self.colors['nostalgik_cream'])
-        control_frame.pack(fill='x', padx=20, pady=(0, 15))
-        
-        # Button layout
-        button_layout = tk.Frame(control_frame, bg=self.colors['nostalgik_cream'])
-        button_layout.pack()
-        
-        # D-Pad (left side)
-        dpad_frame = tk.Frame(button_layout, bg=self.colors['nostalgik_cream'])
-        dpad_frame.pack(side='left', padx=(0, 50))
-        
-        # Action buttons (right side)
-        button_frame = tk.Frame(button_layout, bg=self.colors['nostalgik_cream'])
-        button_frame.pack(side='right')
-        
-        # Create D-Pad
-        self.create_dpad(dpad_frame)
-        
-        # X button (Fire)
-        self.x_button = tk.Button(button_frame,
-                                 text="X",
-                                 font=self.fonts['retro_text'],
-                                 bg=self.colors['red_button'],
-                                 fg='white',
-                                 relief='raised',
-                                 bd=3,
-                                 width=4,
-                                 height=2,
-                                 command=self.shoot,
-                                 takefocus=False)
-        self.x_button.pack(side='right', padx=5)
-        
-        # Y button (Pause)
-        self.y_button = tk.Button(button_frame,
-                                 text="Y",
-                                 font=self.fonts['retro_text'],
-                                 bg=self.colors['purple_button'],
-                                 fg='white',
-                                 relief='raised',
-                                 bd=3,
-                                 width=4,
-                                 height=2,
-                                 command=self.toggle_pause,
-                                 takefocus=False)
-        self.y_button.pack(side='right', padx=5)
-        
-        # Bottom control buttons
-        bottom_controls = tk.Frame(control_frame, bg=self.colors['nostalgik_cream'])
-        bottom_controls.pack(pady=(20, 0))
-        
-        select_btn = tk.Button(bottom_controls,
-                              text="SELECT",
-                              font=self.fonts['retro_small'],
-                              bg=self.colors['button_gray'],
-                              fg=self.colors['text_dark'],
-                              relief='raised',
-                              bd=2,
-                              padx=8,
-                              pady=3,
-                              command=self.quit_game,
-                              takefocus=False)
-        select_btn.pack(side='left', padx=10)
-        
-        start_btn = tk.Button(bottom_controls,
-                             text="START",
-                             font=self.fonts['retro_small'],
-                             bg=self.colors['button_gray'],
-                             fg=self.colors['text_dark'],
-                             relief='raised',
-                             bd=2,
-                             padx=8,
-                             pady=3,
-                             command=self.start_game_from_screen,
-                             takefocus=False)
-        start_btn.pack(side='left', padx=10)
-        
-    def create_dpad(self, parent):
-        """Create D-Pad controller"""
-        dpad_container = tk.Frame(parent, bg=self.colors['nostalgik_cream'])
-        dpad_container.pack()
-        
-        # D-Pad buttons arranged in cross pattern
-        # Top
-        up_btn = tk.Button(dpad_container,
-                          text="▲",
-                          font=self.fonts['retro_text'],
-                          bg=self.colors['button_gray'],
-                          fg=self.colors['text_dark'],
-                          relief='raised',
-                          bd=3,
-                          width=3,
-                          height=1,
-                          command=lambda: None,  # Not used in this game
-                          takefocus=False)
-        up_btn.grid(row=0, column=1, padx=1, pady=1)
-        
-        # Left, Center, Right
-        left_btn = tk.Button(dpad_container,
-                            text="◄",
-                            font=self.fonts['retro_text'],
-                            bg=self.colors['button_gray'],
-                            fg=self.colors['text_dark'],
-                            relief='raised',
-                            bd=3,
-                            width=3,
-                            height=1,
-                            takefocus=False)
-        left_btn.grid(row=1, column=0, padx=1, pady=1)
-        left_btn.bind('<ButtonPress-1>', lambda e: self.set_move_left(True))
-        left_btn.bind('<ButtonRelease-1>', lambda e: self.set_move_left(False))
-        
-        center_frame = tk.Frame(dpad_container, bg=self.colors['button_gray'], width=30, height=20, relief='sunken', bd=1)
-        center_frame.grid(row=1, column=1, padx=1, pady=1)
-        center_frame.grid_propagate(False)
-        
-        right_btn = tk.Button(dpad_container,
-                             text="►",
-                             font=self.fonts['retro_text'],
-                             bg=self.colors['button_gray'],
-                             fg=self.colors['text_dark'],
-                             relief='raised',
-                             bd=3,
-                             width=3,
-                             height=1,
-                             takefocus=False)
-        right_btn.grid(row=1, column=2, padx=1, pady=1)
-        right_btn.bind('<ButtonPress-1>', lambda e: self.set_move_right(True))
-        right_btn.bind('<ButtonRelease-1>', lambda e: self.set_move_right(False))
-        
-        # Bottom
-        down_btn = tk.Button(dpad_container,
-                            text="▼",
-                            font=self.fonts['retro_text'],
-                            bg=self.colors['button_gray'],
-                            fg=self.colors['text_dark'],
-                            relief='raised',
-                            bd=3,
-                            width=3,
-                            height=1,
-                            command=lambda: None,  # Not used in this game
-                            takefocus=False)
-        down_btn.grid(row=2, column=1, padx=1, pady=1)
+        self.canvas.pack(padx=2, pady=2, expand=True)
         
     def setup_keyboard_bindings(self):
-        """Setup keyboard controls"""
-        self.parent.bind('<Left>', lambda e: self.set_move_left(True))
-        self.parent.bind('<Right>', lambda e: self.set_move_right(True))
-        self.parent.bind('<KeyRelease-Left>', lambda e: self.set_move_left(False))
-        self.parent.bind('<KeyRelease-Right>', lambda e: self.set_move_right(False))
-        self.parent.bind('<space>', lambda e: self.shoot())
-        self.parent.bind('<p>', lambda e: self.toggle_pause())
-        self.parent.bind('<Escape>', lambda e: self.quit_game())
-        self.parent.bind('<Return>', lambda e: self.start_game_from_screen())
-        self.parent.focus_set()
+        """Setup keyboard controls - bind to root window"""
+        # Get root window from parent frame
+        root = self.parent.winfo_toplevel()
+        root.bind('<Left>', lambda e: self.set_move_left(True))
+        root.bind('<Right>', lambda e: self.set_move_right(True))
+        root.bind('<KeyRelease-Left>', lambda e: self.set_move_left(False))
+        root.bind('<KeyRelease-Right>', lambda e: self.set_move_right(False))
+        root.bind('<space>', lambda e: self.shoot())
+        root.bind('<p>', lambda e: self.toggle_pause())
+        root.bind('<Escape>', lambda e: self.quit_game())
+        root.bind('<Return>', lambda e: self.start_game_from_screen())
+        root.bind('<Tab>', lambda e: self.quit_game())  # Select returns to hub
+        root.focus_set()
     
     def init_gamepad(self):
         """Initialize gamepad support"""
@@ -347,6 +156,7 @@ class GalaxyWarPat:
             
             self.joystick = None
             self.gamepad_enabled = True
+            self.gamepad_polling_active = True
             self.last_button_state = {}
             self.last_hat = (0, 0)
             
@@ -364,7 +174,7 @@ class GalaxyWarPat:
                 print(f"Gamepad connected to game: {self.joystick.get_name()}")
             
             # Start polling
-            self.parent.after(30, self.poll_gamepad)
+            self.parent.winfo_toplevel().after(30, self.poll_gamepad)
             
         except Exception as e:
             print(f"Gamepad init error in game: {e}")
@@ -372,12 +182,12 @@ class GalaxyWarPat:
     
     def poll_gamepad(self):
         """Poll gamepad input"""
-        if not self.gamepad_enabled:
+        if not self.gamepad_enabled or not self.gamepad_polling_active:
             return
         
         try:
             # Check if window exists
-            self.parent.winfo_exists()
+            self.parent.winfo_toplevel().winfo_exists()
         except:
             return
         
@@ -441,7 +251,7 @@ class GalaxyWarPat:
         
         # Continue polling
         try:
-            self.parent.after(30, self.poll_gamepad)
+            self.parent.winfo_toplevel().after(30, self.poll_gamepad)
         except:
             pass
         
@@ -532,7 +342,7 @@ class GalaxyWarPat:
         spacing_x = 45
         spacing_y = 40
         start_x = 40
-        start_y = 60
+        start_y = 35  # Spawn one tile higher
         
         for row in range(rows):
             for col in range(cols):
@@ -682,8 +492,9 @@ class GalaxyWarPat:
         hit_edge = False
         for enemy in self.enemies:
             if enemy['alive']:
-                if (enemy['x'] <= 20 and self.enemy_direction == -1) or \
-                   (enemy['x'] >= self.canvas_width - 20 and self.enemy_direction == 1):
+                half_w = enemy['width'] // 2
+                if (enemy['x'] - half_w <= 0 and self.enemy_direction == -1) or \
+                   (enemy['x'] + half_w >= self.canvas_width and self.enemy_direction == 1):
                     hit_edge = True
                     break
         
@@ -694,6 +505,9 @@ class GalaxyWarPat:
             for enemy in self.enemies:
                 if enemy['alive']:
                     enemy['y'] += self.enemy_drop_distance
+                    half_w = enemy['width'] // 2
+                    # Keep enemies fully on-screen after drops
+                    enemy['x'] = max(half_w, min(self.canvas_width - half_w, enemy['x']))
                     
             # Speed up as enemies get closer
             self.enemy_move_interval *= 0.95
@@ -701,7 +515,11 @@ class GalaxyWarPat:
             # Move horizontally
             for enemy in self.enemies:
                 if enemy['alive']:
-                    enemy['x'] += self.enemy_speed * self.enemy_direction
+                    half_w = enemy['width'] // 2
+                    new_x = enemy['x'] + self.enemy_speed * self.enemy_direction
+                    min_x = half_w
+                    max_x = self.canvas_width - half_w
+                    enemy['x'] = max(min_x, min(max_x, new_x))
                     
     def update_bullets(self):
         """Update bullet positions"""
@@ -930,24 +748,59 @@ class GalaxyWarPat:
         
         # Continue loop if game is still active
         if self.game_active:
-            self.parent.after(50, self.game_loop)  # ~20 FPS
+            self.parent.winfo_toplevel().after(50, self.game_loop)  # ~20 FPS
             
     def quit_game(self):
         """Return to main menu"""
         self.game_active = False
         self.game_over = False
         
-        # Unbind keys
-        self.parent.unbind('<Left>')
-        self.parent.unbind('<Right>')
-        self.parent.unbind('<KeyRelease-Left>')
-        self.parent.unbind('<KeyRelease-Right>')
-        self.parent.unbind('<space>')
-        self.parent.unbind('<p>')
-        self.parent.unbind('<Escape>')
-        self.parent.unbind('<Return>')
+        # Unbind keys from root window
+        root_window = self.parent.winfo_toplevel()
+        root_window.unbind('<Left>')
+        root_window.unbind('<Right>')
+        root_window.unbind('<KeyRelease-Left>')
+        root_window.unbind('<KeyRelease-Right>')
+        root_window.unbind('<space>')
+        root_window.unbind('<p>')
+        root_window.unbind('<Escape>')
+        root_window.unbind('<Return>')
         
         self.return_callback()
+    
+    def show(self):
+        """Show game again (reuse instance)"""
+        # Oyun durumunu sıfırla
+        self.score = 0
+        self.lives = 3
+        self.level = 1
+        self.game_active = False
+        self.game_over = False
+        self.paused = False
+        
+        self.player = None
+        self.bullets = []
+        self.enemies = []
+        self.enemy_bullets = []
+        self.particles = []
+        
+        self.move_left = False
+        self.move_right = False
+        self.enemy_direction = 1
+        
+        self.last_shot_time = 0
+        self.last_enemy_shot_time = 0
+        self.last_enemy_move_time = 0
+        self.level_start_time = 0
+        
+        # Interface'i yeniden oluştur
+        self.setup_game_screen()
+        self.show_start_screen()
+        
+        # Gamepad'i yeniden başlat
+        if self.gamepad_enabled:
+            self.gamepad_polling_active = True
+            self.parent.winfo_toplevel().after(100, self.poll_gamepad)
 
 
 def main():
@@ -956,11 +809,15 @@ def main():
     root.title("Galaxy War Pat - Test")
     root.geometry("460x680")
     
+    # Create a frame for embedding
+    screen_frame = tk.Frame(root, bg='#9BBB59')
+    screen_frame.pack(fill='both', expand=True)
+    
     def return_to_menu():
         print("Returning to menu...")
         root.quit()
     
-    game = GalaxyWarPat(root, return_to_menu)
+    game = GalaxyWarPat(screen_frame, return_to_menu)
     root.mainloop()
 
 
