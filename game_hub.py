@@ -14,6 +14,7 @@ import random
 import threading
 import time
 import os
+import tempfile
 from PIL import Image, ImageTk, ImageDraw, ImageFilter
 import io
 import base64
@@ -25,6 +26,7 @@ from war_game_nostalgik import WarGame
 from river_game_nostalgik import RiverGame
 from galaxy_war_pat import GalaxyWarPat
 from crakers_nostalgik import CrakersGame
+from tetris_nostalgik import TetrisGame
 
 class NostalgiKitHub:
     def __init__(self):
@@ -33,6 +35,7 @@ class NostalgiKitHub:
         
         # Set window icon
         self.icon = None  # Keep reference to prevent garbage collection
+        self.icon_taskbar_path = None
         try:
             icon_path = os.path.join(os.path.dirname(__file__), 'icon.png')
             if os.path.exists(icon_path):
@@ -44,6 +47,14 @@ class NostalgiKitHub:
                         pil_image = pil_image.resize((32, 32), Image.Resampling.LANCZOS)
                     self.icon = ImageTk.PhotoImage(pil_image)
                     self.root.iconphoto(False, self.icon)
+
+                    # Generate an .ico for taskbar if possible
+                    self.icon_taskbar_path = self.generate_taskbar_icon(icon_path)
+                    if self.icon_taskbar_path:
+                        try:
+                            self.root.iconbitmap(default=self.icon_taskbar_path)
+                        except Exception:
+                            pass
                 except Exception:
                     # Fallback to PhotoImage
                     self.icon = PhotoImage(file=icon_path)
@@ -89,7 +100,8 @@ class NostalgiKitHub:
             {"name": "WAR GAME", "desc": "Turn-Based Combat"},
             {"name": "RIVER PUZZLE", "desc": "Logic Challenge"},
             {"name": "GALAXY WAR PAT", "desc": "Space Invaders"},
-            {"name": "CRAKERS QUEST", "desc": "Grid Adventure"}
+            {"name": "CRAKERS QUEST", "desc": "Grid Adventure"},
+            {"name": "BLOCK STACK", "desc": "Falling Blocks"}
         ]
         
         # Game instances - her oyun sadece bir kez oluşturulur
@@ -98,7 +110,8 @@ class NostalgiKitHub:
             'war_game': None,
             'river_game': None,
             'galaxy_war': None,
-            'crakers_game': None
+            'crakers_game': None,
+            'tetris_game': None
         }
         
         # Battery level (simulation)
@@ -186,6 +199,20 @@ class NostalgiKitHub:
 
         # Create controls
         self.create_controls(main_frame)
+
+    def generate_taskbar_icon(self, png_path):
+        """Create a temporary .ico from the png to show in taskbar (Windows)."""
+        try:
+            ico_dir = tempfile.gettempdir()
+            ico_path = os.path.join(ico_dir, "nostalgikit_icon.ico")
+            with Image.open(png_path) as img:
+                # Ensure square 32x32 for ico
+                if img.size != (32, 32):
+                    img = img.resize((32, 32), Image.Resampling.LANCZOS)
+                img.save(ico_path, format="ICO")
+            return ico_path
+        except Exception:
+            return None
 
     def create_controls(self, parent):
         """Create NostalgiKit control layout (larger spacing for bigger console)"""
@@ -406,7 +433,8 @@ class NostalgiKitHub:
             'war_game': 'war_game',
             'river_game': 'river_game',
             'galaxy_war': 'galaxy_war',
-            'crakers_game': 'crakers_game'
+            'crakers_game': 'crakers_game',
+            'tetris_game': 'tetris_game'
         }
         game_key = screen_to_key.get(self.current_screen)
         if game_key:
@@ -571,8 +599,8 @@ class NostalgiKitHub:
                     self.last_button_state[btn_index] = current
                     return current and not previous
                 
-                # Map buttons to actions (only in menu, not during games)
-                if self.current_screen == "menu":
+                # Map buttons to actions (menu and welcome)
+                if self.current_screen in ("menu", "welcome"):
                     if button_just_pressed(self.BTN_START):
                         self.start_action()
                     if button_just_pressed(self.BTN_BACK):
@@ -687,10 +715,12 @@ class NostalgiKitHub:
                 self.start_war_game()
             elif self.selected_game == 2:
                 self.start_river_game()
-            elif self.selected_game == 4:
-                self.start_crakers_game()
             elif self.selected_game == 3:
                 self.start_galaxy_war_game()
+            elif self.selected_game == 4:
+                self.start_crakers_game()
+            elif self.selected_game == 5:
+                self.start_tetris_game()
         else:
             self.forward_action_to_game('x')
 
@@ -1028,6 +1058,23 @@ class NostalgiKitHub:
             # Track active screen for input routing
             self.current_screen = "crakers_game"
         
+        self.root.after(1500, launch_game)
+
+    def start_tetris_game(self):
+        """Start the Block Stack (Tetris) Game"""
+        self.gamepad_polling_active = False
+
+        self.show_loading_screen("BLOCK STACK")
+
+        def launch_game():
+            self.remove_keyboard_bindings()
+            self.clear_screen()
+            if self.game_instances['tetris_game'] is None:
+                self.game_instances['tetris_game'] = TetrisGame(self.screen, self.return_to_nostalgik)
+            else:
+                self.game_instances['tetris_game'].show()
+            self.current_screen = "tetris_game"
+
         self.root.after(1500, launch_game)
 
     def return_to_nostalgik(self):

@@ -50,12 +50,59 @@ TILE_WALL = 1
 # HELPER CLASSES
 # ============================================================================
 
+def astar_pathfind(game_map, start, goal):
+    """A* pathfinding algorithm - returns list of (x,y) steps or None"""
+    from heapq import heappush, heappop
+    
+    if start == goal:
+        return []
+    
+    def heuristic(a, b):
+        return abs(a[0] - b[0]) + abs(a[1] - b[1])
+    
+    open_set = []
+    heappush(open_set, (0, start))
+    came_from = {}
+    g_score = {start: 0}
+    f_score = {start: heuristic(start, goal)}
+    
+    while open_set:
+        _, current = heappop(open_set)
+        
+        if current == goal:
+            # Reconstruct path
+            path = []
+            while current in came_from:
+                path.append(current)
+                current = came_from[current]
+            path.reverse()
+            return path
+        
+        x, y = current
+        for dx, dy in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
+            neighbor = (x + dx, y + dy)
+            
+            if not game_map.is_walkable(neighbor[0], neighbor[1]):
+                continue
+            
+            tentative_g = g_score[current] + 1
+            
+            if neighbor not in g_score or tentative_g < g_score[neighbor]:
+                came_from[neighbor] = current
+                g_score[neighbor] = tentative_g
+                f_score[neighbor] = tentative_g + heuristic(neighbor, goal)
+                heappush(open_set, (f_score[neighbor], neighbor))
+    
+    return None  # No path found
+
+
 class Player:
     def __init__(self, x, y):
         self.x = x
         self.y = y
         self.lives = PLAYER_LIVES
         self.invincible_until = 0
+        self.last_direction = (0, 1)  # Track for AI prediction
         
     def move(self, dx, dy, game_map):
         new_x = self.x + dx
@@ -64,6 +111,8 @@ class Player:
         if game_map.is_walkable(new_x, new_y):
             self.x = new_x
             self.y = new_y
+            # Track movement direction for AI prediction
+            self.last_direction = (dx, dy)
             return True
         return False
     
@@ -84,33 +133,149 @@ class Player:
 
 
 class Enemy:
+    # AI States
+    STATE_PATROL = "patrol"
+    STATE_CHASE = "chase"
+    STATE_SEARCH = "search"
+    
     def __init__(self, x, y, patrol_points):
         self.x = x
         self.y = y
         self.patrol_points = patrol_points
         self.current_target = 0
         self.last_move_time = time.time()
+        
+        # AI state machine
+        self.state = self.STATE_PATROL
+        self.vision_radius = 6
+        self.last_seen_pos = None
+        self.search_timer = 0
+        self.search_duration = 3.0  # seconds to search before returning to patrol
+        self.current_path = []
     
-    def update(self, game_map):
+    def can_see_player(self, player, game_map):
+        """Check if enemy has line of sight to player"""
+        dx = abs(player.x - self.x)
+        dy = abs(player.y - self.y)
+        distance = dx + dy  # Manhattan distance
+        
+        if distance > self.vision_radius:
+            return False
+        
+        # Simple line of sight check
+        x0, y0 = self.x, self.y
+        x1, y1 = player.x, player.y
+        
+        # Bresenham-like check for walls
+        steps = max(abs(x1 - x0), abs(y1 - y0))
+        if steps == 0:
+            return True
+        
+        for i in range(steps + 1):
+            t = i / steps
+            x = int(x0 + t * (x1 - x0))
+            y = int(y0 + t * (y1 - y0))
+            
+            if not game_map.is_walkable(x, y):
+                return False
+        
+        return True
+    
+    def update(self, game_map, player):
+        """Update enemy AI with state machine + A* pathfinding"""
         now = time.time()
         if now - self.last_move_time < ENEMY_MOVE_INTERVAL:
             return
         
         self.last_move_time = now
         
-        if self.patrol_points:
-            target_x, target_y = self.patrol_points[self.current_target]
-            
-            dx = 0 if self.x == target_x else (1 if target_x > self.x else -1)
-            dy = 0 if self.y == target_y else (1 if target_y > self.y else -1)
-            
-            if dx != 0 and game_map.is_walkable(self.x + dx, self.y):
-                self.x += dx
-            elif dy != 0 and game_map.is_walkable(self.x, self.y + dy):
-                self.y += dy
-            
-            if self.x == target_x and self.y == target_y:
-                self.current_target = (self.current_target + 1) % len(self.patrol_points)
+        # State transitions
+        if self.can_see_player(player, game_map):
+            if self.state != self.STATE_CHASE:
+                self.state = self.STATE_CHASE
+                self.current_path = []
+            self.last_seen_pos = (player.x, player.y)
+            self.search_timer = 0
+        elif self.state == self.STATE_CHASE:
+            # Lost sight, switch to search
+            self.state = self.STATE_SEARCH
+            self.search_timer = now
+            self.current_path = []
+        elif self.state == self.STATE_SEARCH:
+            # Check if search timeout
+            if now - self.search_timer > self.search_duration:
+                self.state = self.STATE_PATROL
+                self.current_path = []
+        
+        # Execute state behavior
+        if self.state == self.STATE_CHASE:
+            self._chase_player(player, game_map)
+        elif self.state == self.STATE_SEARCH:
+            self._search_last_seen(game_map)
+        else:  # PATROL
+            self._patrol(game_map)
+    
+    def _chase_player(self, player, game_map):
+        """Chase player using A* pathfinding"""
+        target = (player.x, player.y)
+        
+        # Predict player movement (mini AI touch)
+        # If player is moving, aim slightly ahead
+        if hasattr(player, 'last_direction'):
+            pred_x = player.x + player.last_direction[0]
+            pred_y = player.y + player.last_direction[1]
+            if game_map.is_walkable(pred_x, pred_y):
+                target = (pred_x, pred_y)
+        
+        if not self.current_path or self.current_path[-1] != target:
+            self.current_path = astar_pathfind(game_map, (self.x, self.y), target)
+        
+        if self.current_path:
+            next_pos = self.current_path.pop(0)
+            self.x, self.y = next_pos
+    
+    def _search_last_seen(self, game_map):
+        """Search the last known player position"""
+        if not self.last_seen_pos:
+            self.state = self.STATE_PATROL
+            return
+        
+        if (self.x, self.y) == self.last_seen_pos:
+            # Reached last seen position, no player here
+            self.last_seen_pos = None
+            self.state = self.STATE_PATROL
+            self.current_path = []
+            return
+        
+        if not self.current_path:
+            self.current_path = astar_pathfind(game_map, (self.x, self.y), self.last_seen_pos)
+        
+        if self.current_path:
+            next_pos = self.current_path.pop(0)
+            self.x, self.y = next_pos
+        else:
+            # Can't reach, give up
+            self.state = self.STATE_PATROL
+            self.last_seen_pos = None
+    
+    def _patrol(self, game_map):
+        """Original patrol behavior"""
+        if not self.patrol_points:
+            return
+        
+        target_x, target_y = self.patrol_points[self.current_target]
+        
+        if (self.x, self.y) == (target_x, target_y):
+            self.current_target = (self.current_target + 1) % len(self.patrol_points)
+            self.current_path = []
+            return
+        
+        if not self.current_path:
+            self.current_path = astar_pathfind(game_map, (self.x, self.y), (target_x, target_y))
+        
+        if self.current_path:
+            next_pos = self.current_path.pop(0)
+            self.x, self.y = next_pos
 
 
 class GameMap:
@@ -498,7 +663,7 @@ class CrakersGame:
     def update_game(self):
         """Update game state"""
         if self.enemy:
-            self.enemy.update(self.game_map)
+            self.enemy.update(self.game_map, self.player)
             
             if self.player.x == self.enemy.x and self.player.y == self.enemy.y:
                 self.player.take_hit()
@@ -547,8 +712,16 @@ class CrakersGame:
             ex = self.enemy.x * TILE_SIZE + 2
             ey = self.enemy.y * TILE_SIZE + 2
             
+            # Color based on state
+            if self.enemy.state == Enemy.STATE_CHASE:
+                enemy_color = '#ff0000'  # Red when chasing
+            elif self.enemy.state == Enemy.STATE_SEARCH:
+                enemy_color = '#ff8800'  # Orange when searching
+            else:
+                enemy_color = '#cc0000'  # Dark red when patrolling
+            
             self.canvas.create_rectangle(ex, ey, ex + TILE_SIZE - 4, ey + TILE_SIZE - 4,
-                                        fill='#ff0000', outline=COLOR_SCREEN_DARK, width=2)
+                                        fill=enemy_color, outline=COLOR_SCREEN_DARK, width=2)
             
             eye_size = 2
             self.canvas.create_oval(ex + 3, ey + 4, ex + 3 + eye_size, ey + 4 + eye_size,

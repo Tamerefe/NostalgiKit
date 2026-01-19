@@ -29,6 +29,15 @@ def set_window_icon(window):
                     pil_image = pil_image.resize((32, 32), Image.Resampling.LANCZOS)
                 icon = ImageTk.PhotoImage(pil_image)
                 window.iconphoto(False, icon)
+
+                # Also set taskbar icon on Windows by generating a temporary ICO
+                try:
+                    import tempfile
+                    ico_path = os.path.join(tempfile.gettempdir(), 'nostalgikit_icon.ico')
+                    pil_image.save(ico_path, format='ICO')
+                    window.iconbitmap(default=ico_path)
+                except Exception:
+                    pass
             except Exception:
                 # Fallback to PhotoImage
                 icon = tk.PhotoImage(file=icon_path)
@@ -49,6 +58,11 @@ def check_dependencies():
         from PIL import Image, ImageTk
     except ImportError:
         missing_packages.append("Pillow")
+
+    try:
+        import pygame
+    except ImportError:
+        missing_packages.append("pygame")
     
     if missing_packages:
         root = tk.Tk()
@@ -58,7 +72,7 @@ def check_dependencies():
             "Missing Dependencies", 
             f"The following packages are required but not installed:\n" +
             "\n".join(missing_packages) +
-            "\n\nPlease install them using:\npip install Pillow"
+            "\n\nPlease install them using:\npip install Pillow pygame"
         )
         return False
     

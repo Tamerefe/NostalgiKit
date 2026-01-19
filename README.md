@@ -53,11 +53,26 @@ Transform your PC into a classic vintage handheld console! Enjoy three fully mod
 - **Features**:
   - Retro grid-based movement system
   - Gem collection mechanics
-  - Patrolling enemy AI
+  - **Intelligent Enemy AI with State Machine**
+    - **PATROL Mode**: Enemy follows patrol route (dark red)
+    - **CHASE Mode**: Spots player within 6-tile vision radius and pursues with A* pathfinding (bright red)
+    - **SEARCH Mode**: Lost sight of player, searches last known location (orange)
+    - Line-of-sight vision system (walls block vision)
+    - Predictive movement targeting
+  - A* pathfinding for smart wall navigation
   - Dash power-up ability
   - HUD with score and lives tracking
   - Win/Lose screen with retry system
   - Full keyboard and gamepad controls
+
+### 6. 🧱 Block Stack (Falling Blocks)
+- **Genre**: Puzzle/Arcade
+- **Gameplay**: Classic falling tetromino puzzle tuned for the green monochrome display
+- **Features**:
+  - Smooth soft/hard drop with rotation
+  - Next-piece preview and level-based speed
+  - Score, line, and level HUD in retro styling
+  - Gamepad-ready controls with pause and quick restart
 
 ## 🎮 NostalgiKit Controls
 
@@ -135,6 +150,7 @@ Direct access to the NostalgiKit gaming hub interface.
 ├── 🌊 river_game_nostalgik.py    # River Puzzle logic
 ├── 🚀 galaxy_war_pat.py          # Galaxy War Pat shooter
 ├── � crakers_nostalgik.py       # Crakers Grid Adventure
+├── 🧱 tetris_nostalgik.py        # Block Stack falling blocks
 ├── �🏁 main.py                    # Application launcher with dependency checks
 ├── 🎯 start_games.bat            # Windows launcher with retro startup screen
 ├── 📖 README.md                  # This documentation
@@ -183,9 +199,18 @@ Direct access to the NostalgiKit gaming hub interface.
 
 ### Crakers Adventure Tips
 - Plan your route to collect all gems
-- Watch enemy patrol patterns
+- **Watch enemy color changes**: Red = chasing you, Orange = searching, Dark red = patrolling
+- **Use line-of-sight**: Hide behind walls to break enemy vision and escape
 - Save dash for emergencies or speedruns
-- Corner enemies to avoid confrontation
+- **Enemy AI is smart**: It uses A* pathfinding and predicts your movement
+- Corner enemies to avoid confrontation, but remember they can see through 6 tiles
+- Lead enemies away from gem clusters before collecting
+
+### Block Stack Tips
+- Keep a flat stack; leave a clean channel for hard drops
+- Use soft drops to gently place pieces when speed rises
+- Rotate before sliding into gaps to avoid wall kicks
+- Clearing four lines (a "stack smash") yields the biggest rewards
 
 ## 🔧 Technical Features
 
