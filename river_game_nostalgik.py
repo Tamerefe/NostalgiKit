@@ -50,6 +50,7 @@ class NostalgiKitRiverGame:
         }
         
         self.current_screen = "intro"
+        self.gamepad_polling_active = True
         self.setup_fonts()
         self.setup_retro_interface()
         self.init_gamepad()
@@ -66,71 +67,20 @@ class NostalgiKitRiverGame:
         
     def setup_retro_interface(self):
         """Create game interface inside hub's screen frame"""
-        # Destroy previous game frame if it exists
-        if hasattr(self, 'game_frame') and self.game_frame.winfo_exists():
-            self.game_frame.destroy()
-        
         # Create main game frame inside hub's screen (parent is now the screen frame)
-        self.game_frame = tk.Frame(self.parent, bg=self.colors['screen_green'])
-        self.game_frame.pack(fill='both', expand=True)
+        # Only create once - reuse on subsequent calls
+        if not hasattr(self, 'game_frame') or not self.game_frame.winfo_exists():
+            self.game_frame = tk.Frame(self.parent, bg=self.colors['screen_green'])
+            self.game_frame.pack(fill='both', expand=True)
         
-        # The screen is the game frame itself
-        self.screen = self.game_frame
+        # Clear any previous content
+        self.clear_screen()
         
         # Setup keyboard bindings to root window
         root = self.parent.winfo_toplevel()
         root.focus_set()
         root.bind('<Key>', self.on_key_press)
         root.bind('<Button-1>', lambda e: root.focus_set())
-        
-        # Start game
-        self.show_intro()
-    
-    def create_retro_controls(self, parent):
-        
-        # Top section with branding area (taller for larger console)
-        top_frame = tk.Frame(retro_frame, bg=self.colors['NostalgiKit_cream'], height=50)
-        top_frame.pack(fill='x', pady=(12, 8))
-        top_frame.pack_propagate(False)
-        
-        # NostalgiKit branding
-        brand_label = tk.Label(top_frame,
-                              text="NostalgiKit",
-                              font=self.fonts['retro_title'],
-                              fg=self.colors['text_dark'],
-                              bg=self.colors['NostalgiKit_cream'])
-        brand_label.pack()
-        
-        # Model designation  
-        NostalgiKit_label = tk.Label(top_frame,
-                                text="RIVER PUZZLE",
-                                font=self.fonts['retro_small'],
-                                fg=self.colors['text_dark'],
-                                bg=self.colors['NostalgiKit_cream'])
-        NostalgiKit_label.pack()
-        
-        # Screen frame (larger with more padding)
-        screen_frame = tk.Frame(retro_frame, bg=self.colors['dark_green'], relief='sunken', bd=3)
-        screen_frame.pack(fill='both', expand=True, padx=25, pady=12)
-        
-        # Screen label
-        screen_label_frame = tk.Frame(screen_frame, bg=self.colors['dark_green'], height=25)
-        screen_label_frame.pack(fill='x', padx=12, pady=6)
-        screen_label_frame.pack_propagate(False)
-        
-        screen_info = tk.Label(screen_label_frame,
-                              text="DOT MATRIX WITH STEREO SOUND",
-                              font=self.fonts['retro_tiny'],
-                              fg=self.colors['NostalgiKit_cream'],
-                              bg=self.colors['dark_green'])
-        screen_info.pack()
-        
-        # Actual screen (larger padding)
-        self.screen = tk.Frame(screen_frame, bg=self.colors['screen_green'], relief='sunken', bd=2)
-        self.screen.pack(fill='both', expand=True, padx=12, pady=(0, 12))
-        
-        # Controls
-        self.create_retro_controls(retro_frame)
         
         # Start game
         self.show_intro()
@@ -154,14 +104,14 @@ class NostalgiKitRiverGame:
         elif key in ['escape', 'backspace', 'y']:
             self.y_button_action()
         elif key in ['tab']:
-            self.return_callback()
+            self.exit_game()
             
     def show_intro(self):
         """Show game introduction"""
         self.clear_screen()
         self.current_screen = "intro"
         
-        content = tk.Frame(self.screen, bg=self.colors['screen_green'])
+        content = tk.Frame(self.game_frame, bg=self.colors['screen_green'])
         content.pack(fill='both', expand=True, padx=5, pady=5)
         
         # Title
@@ -232,7 +182,7 @@ safely!"""
             self.show_victory()
             return
             
-        content = tk.Frame(self.screen, bg=self.colors['screen_green'])
+        content = tk.Frame(self.game_frame, bg=self.colors['screen_green'])
         content.pack(fill='both', expand=True, padx=3, pady=3)
         
         # Status bar
@@ -425,7 +375,7 @@ safely!"""
         if self.current_screen == "game":
             self.show_intro()
         else:
-            self.return_callback()
+            self.exit_game()
             
     def execute_move(self):
         """Execute the selected move"""
@@ -484,7 +434,7 @@ safely!"""
         self.clear_screen()
         self.current_screen = "loss"
         
-        content = tk.Frame(self.screen, bg=self.colors['screen_green'])
+        content = tk.Frame(self.game_frame, bg=self.colors['screen_green'])
         content.pack(fill='both', expand=True, padx=5, pady=5)
         
         # Loss title
@@ -531,7 +481,7 @@ alone together!"""
         self.clear_screen()
         self.current_screen = "victory"
         
-        content = tk.Frame(self.screen, bg=self.colors['screen_green'])
+        content = tk.Frame(self.game_frame, bg=self.colors['screen_green'])
         content.pack(fill='both', expand=True, padx=5, pady=5)
         
         # Victory title
@@ -587,9 +537,25 @@ alone together!"""
         controls_label.pack(side='bottom', pady=5)
         
     def clear_screen(self):
-        """Clear the screen"""
-        for widget in self.screen.winfo_children():
-            widget.destroy()    
+        """Clear the screen - remove all children but keep the frame"""
+        # Only destroy children of game_frame, not the frame itself
+        for widget in self.game_frame.winfo_children():
+            widget.destroy()
+    
+    def exit_game(self):
+        """Exit game and return to hub"""
+        # Stop polling
+        self.gamepad_polling_active = False
+        
+        # Unbind keyboard from root
+        root = self.parent.winfo_toplevel()
+        root.unbind('<Key>')
+        root.unbind('<Button-1>')
+        
+        # Clear the game frame and exit
+        self.clear_screen()
+        self.return_callback()
+    
     def init_gamepad(self):
         """Initialize gamepad support"""
         try:
@@ -614,7 +580,7 @@ alone together!"""
     
     def poll_gamepad(self):
         """Poll gamepad input"""
-        if not self.gamepad_enabled:
+        if not self.gamepad_enabled or not self.gamepad_polling_active:
             return
         
         try:

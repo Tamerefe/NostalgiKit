@@ -89,13 +89,15 @@ class GalaxyWarPat:
         
     def setup_game_screen(self):
         """Create the game interface inside hub's screen frame"""
-        # Destroy previous game frame if it exists
-        if hasattr(self, 'game_frame') and self.game_frame.winfo_exists():
-            self.game_frame.destroy()
-        
         # Create main game frame inside hub's screen (parent is now the screen frame)
-        self.game_frame = tk.Frame(self.parent, bg=self.colors['screen_green'])
-        self.game_frame.pack(fill='both', expand=True)
+        # Only create once - reuse on subsequent calls
+        if not hasattr(self, 'game_frame') or not self.game_frame.winfo_exists():
+            self.game_frame = tk.Frame(self.parent, bg=self.colors['screen_green'])
+            self.game_frame.pack(fill='both', expand=True)
+        
+        # Clear any previous content
+        for widget in self.game_frame.winfo_children():
+            widget.destroy()
         
         # HUD (Score, Wave, Lives)
         hud_frame = tk.Frame(self.game_frame, bg=self.colors['screen_dark'], height=30)

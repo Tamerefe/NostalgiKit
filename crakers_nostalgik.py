@@ -326,13 +326,15 @@ class CrakersGame:
     
     def setup_ui(self):
         """Setup game UI inside hub's screen frame"""
-        # Destroy previous game frame if it exists
-        if hasattr(self, 'game_frame') and self.game_frame.winfo_exists():
-            self.game_frame.destroy()
-        
         # Create main game frame inside hub's screen (parent is now the screen frame)
-        self.game_frame = tk.Frame(self.parent, bg=COLOR_SCREEN_GREEN)
-        self.game_frame.pack(fill='both', expand=True)
+        # Only create once - reuse on subsequent calls
+        if not hasattr(self, 'game_frame') or not self.game_frame.winfo_exists():
+            self.game_frame = tk.Frame(self.parent, bg=COLOR_SCREEN_GREEN)
+            self.game_frame.pack(fill='both', expand=True)
+        
+        # Clear any previous content
+        for widget in self.game_frame.winfo_children():
+            widget.destroy()
         
         # Setup keyboard bindings to root window
         root_window = self.parent.winfo_toplevel()
@@ -669,9 +671,8 @@ class CrakersGame:
         root_window.unbind('<Escape>')
         root_window.unbind('<r>')
         
-        if hasattr(self, 'game_frame') and self.game_frame.winfo_exists():
-            self.game_frame.destroy()
-        
+        # Clear the game frame (don't destroy it) and exit
+        self.clear_screen()
         self.on_exit_callback()
     
     def show(self):

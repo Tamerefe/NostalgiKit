@@ -97,6 +97,7 @@ class NostalgiKitWarGame:
         }
         
         self.current_screen = "intro"
+        self.gamepad_polling_active = True
         self.setup_fonts()
         self.setup_retro_interface()
         self.init_gamepad()
@@ -127,16 +128,14 @@ class NostalgiKitWarGame:
         
     def setup_retro_interface(self):
         """Create game interface inside hub's screen frame"""
-        # Destroy previous game frame if it exists
-        if hasattr(self, 'game_frame') and self.game_frame.winfo_exists():
-            self.game_frame.destroy()
-        
         # Create main game frame inside hub's screen (parent is now the screen frame)
-        self.game_frame = tk.Frame(self.parent, bg=self.colors['screen_green'])
-        self.game_frame.pack(fill='both', expand=True)
+        # Only create once - reuse on subsequent calls
+        if not hasattr(self, 'game_frame') or not self.game_frame.winfo_exists():
+            self.game_frame = tk.Frame(self.parent, bg=self.colors['screen_green'])
+            self.game_frame.pack(fill='both', expand=True)
         
-        # The screen is the game frame itself
-        self.screen = self.game_frame
+        # Clear any previous content
+        self.clear_screen()
         
         # Setup keyboard bindings to root window
         root = self.parent.winfo_toplevel()
@@ -258,14 +257,14 @@ class NostalgiKitWarGame:
         elif key in ['escape', 'backspace', 'y']:
             self.y_button_action()
         elif key in ['tab']:
-            self.return_callback()
+            self.exit_game()
             
     def show_intro(self):
         """Show game introduction with character selection"""
         self.clear_screen()
         self.current_screen = "character_select"
         
-        content = tk.Frame(self.screen, bg=self.colors['screen_green'])
+        content = tk.Frame(self.game_frame, bg=self.colors['screen_green'])
         content.pack(fill='both', expand=True, padx=5, pady=5)
         
         # Title
@@ -389,7 +388,7 @@ SPECIAL: {char_data['special']['name']}
         """Show the main battle screen"""
         self.clear_screen()
         
-        content = tk.Frame(self.screen, bg=self.colors['screen_green'])
+        content = tk.Frame(self.game_frame, bg=self.colors['screen_green'])
         content.pack(fill='both', expand=True, padx=3, pady=3)
         
         # Round counter
@@ -677,14 +676,14 @@ SPECIAL: {char_data['special']['name']}
     def y_button_action(self):
         """Handle Y button press"""
         if self.current_screen == "character_select":
-            self.return_callback()
+            self.exit_game()
         elif self.current_screen == "battle":
             if self.game_over:
                 self.show_intro()
             else:
                 self.show_intro()
         else:
-            self.return_callback()
+            self.exit_game()
             
     def execute_action(self):
         """Execute the selected action based on character class"""
@@ -835,9 +834,24 @@ SPECIAL: {char_data['special']['name']}
                     self.battle_log.append(f"{self.enemy_name}'s {special_name} missed!")
             
     def clear_screen(self):
-        """Clear the screen"""
-        for widget in self.screen.winfo_children():
+        """Clear the screen - remove all children but keep the frame"""
+        # Only destroy children of game_frame, not the frame itself
+        for widget in self.game_frame.winfo_children():
             widget.destroy()
+    
+    def exit_game(self):
+        """Exit game and return to hub"""
+        # Stop polling
+        self.gamepad_polling_active = False
+        
+        # Unbind keyboard from root
+        root = self.parent.winfo_toplevel()
+        root.unbind('<Key>')
+        root.unbind('<Button-1>')
+        
+        # Clear the game frame and exit
+        self.clear_screen()
+        self.return_callback()
     
     def show(self):
         """Show game again (reuse instance)"""

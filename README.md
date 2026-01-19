@@ -37,14 +37,27 @@ Transform your PC into a classic vintage handheld console! Enjoy three fully mod
 
 ### 4. 🚀 Galaxy War Pat (Space Shooter)
 - **Genre**: Arcade/Action
-- **Gameplay**: Classic space invaders-style shooter with pixel art design
+- **Gameplay**: Classic space invaders-style shooter with unique pixel art design
 - **Features**:
   - Fast-paced arcade action
-  - Pixel art enemy designs
-  - Level progression system
-  - Lives and scoring system
-  - Gamepad support
-  - Particle effects and explosions
+  - Custom pixel art enemy designs (Squid, Diamond, Crab)
+  - Wave-based progression system
+  - Lives and scoring mechanics
+  - Increasing difficulty with speed boosts
+  - Particle explosion effects
+  - Full gamepad support
+
+### 5. 🍰 Crakers (Grid Adventure)
+- **Genre**: Arcade/Action
+- **Gameplay**: Top-down grid-based adventure with gems, enemies, and power-ups
+- **Features**:
+  - Retro grid-based movement system
+  - Gem collection mechanics
+  - Patrolling enemy AI
+  - Dash power-up ability
+  - HUD with score and lives tracking
+  - Win/Lose screen with retry system
+  - Full keyboard and gamepad controls
 
 ## 🎮 NostalgiKit Controls
 
@@ -121,7 +134,8 @@ Direct access to the NostalgiKit gaming hub interface.
 ├── ⚔️ war_game_nostalgik.py      # War Game combat
 ├── 🌊 river_game_nostalgik.py    # River Puzzle logic
 ├── 🚀 galaxy_war_pat.py          # Galaxy War Pat shooter
-├── 🏁 main.py                    # Application launcher with dependency checks
+├── � crakers_nostalgik.py       # Crakers Grid Adventure
+├── �🏁 main.py                    # Application launcher with dependency checks
 ├── 🎯 start_games.bat            # Windows launcher with retro startup screen
 ├── 📖 README.md                  # This documentation
 ├── 📜 LICENSE.md                 # MIT License
@@ -160,6 +174,18 @@ Direct access to the NostalgiKit gaming hub interface.
 - Farmer must be present to prevent conflicts
 - Optimal solution requires exactly 7 moves
 - Think several moves ahead for efficient crossing
+
+### Galaxy War Pat Strategy
+- Keep moving to avoid enemy fire
+- Focus on clearing bottom rows first
+- Use edges for tactical positioning
+- Watch enemy drop patterns for safe zones
+
+### Crakers Adventure Tips
+- Plan your route to collect all gems
+- Watch enemy patrol patterns
+- Save dash for emergencies or speedruns
+- Corner enemies to avoid confrontation
 
 ## 🔧 Technical Features
 
@@ -202,13 +228,19 @@ Experience the nostalgia of classic handheld gaming:
 
 ### Galaxy War Pat Mastery
 - **Sharp Shooter**: Achieve 90%+ accuracy
-- **Survivor**: Complete 5 levels without losing a life
+- **Survivor**: Complete 5 waves without losing a life
 - **High Scorer**: Reach 10,000 points
-- **Speed Demon**: Clear a level in under 30 seconds
+- **Speed Demon**: Clear a wave in under 30 seconds
+
+### Crakers Adventure Mastery
+- **Gem Collector**: Collect all gems without taking damage
+- **Speed Runner**: Complete level in under 60 seconds
+- **Perfect Run**: Win with all 3 lives intact
+- **Dash Master**: Complete using dash ability strategically
 
 ## 🎮 The Complete NostalgiKit Experience
 
-Step back in time to the golden age of portable gaming! Our NostalgiKit recreates the magic of vintage handheld consoles while bringing four beloved games into the modern era - from classic puzzle and strategy to fast-paced arcade action. Whether you're a retro gaming enthusiast or discovering these gameplay styles for the first time, prepare for hours of engaging, nostalgic entertainment.
+Step back in time to the golden age of portable gaming! Our NostalgiKit recreates the magic of vintage handheld consoles while bringing five beloved games into the modern era - from classic puzzle and strategy to fast-paced arcade action. Whether you're a retro gaming enthusiast or discovering these gameplay styles for the first time, prepare for hours of engaging, nostalgic entertainment.
 
 **🎯 Ready to Game? Launch your NostalgiKit and dive into retro gaming perfection!**
 
