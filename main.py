@@ -59,23 +59,24 @@ def check_dependencies():
     except ImportError:
         missing_packages.append("Pillow")
 
-    try:
-        import pygame
-    except ImportError:
-        missing_packages.append("pygame")
-    
     if missing_packages:
         root = tk.Tk()
         root.withdraw()
         set_window_icon(root)
         messagebox.showerror(
-            "Missing Dependencies", 
+            "Missing Dependencies",
             f"The following packages are required but not installed:\n" +
             "\n".join(missing_packages) +
-            "\n\nPlease install them using:\npip install Pillow pygame"
+            "\n\nPlease install them using:\npip install Pillow"
         )
         return False
-    
+
+    # pygame is optional: without it the games still work, only gamepads are disabled
+    try:
+        import pygame  # noqa: F401
+    except ImportError:
+        print("pygame not found - gamepad support disabled (pip install pygame or pygame-ce)")
+
     return True
 
 def main():

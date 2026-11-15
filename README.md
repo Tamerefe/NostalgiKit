@@ -8,11 +8,10 @@ Transform your PC into a classic vintage handheld console! Enjoy three fully mod
 
 ### 1. 🔮 Number Oracle (Card Guess)
 - **Genre**: Puzzle/Strategy
-- **Gameplay**: Use magical deduction to guess the secret number
+- **Gameplay**: Think of a number from 1 to 20, answer YES/NO for 5 magic cards and the oracle reveals it
 - **Features**: 
   - Retro handheld card display system
-  - Intelligent hint system
-  - Achievement tracking
+  - Binary magic cards - the oracle always finds the right number
   - Classic monochrome aesthetics
 
 ### 2. ⚔️ War Game (Turn-Based Combat)
@@ -37,10 +36,10 @@ Transform your PC into a classic vintage handheld console! Enjoy three fully mod
 
 ### 4. 🚀 Galaxy War Pat (Space Shooter)
 - **Genre**: Arcade/Action
-- **Gameplay**: Classic space invaders-style shooter with unique pixel art design
+- **Gameplay**: Retro arcade shooter - hold off descending formations of original pixel-art aliens
 - **Features**:
   - Fast-paced arcade action
-  - Custom pixel art enemy designs (Squid, Diamond, Crab)
+  - Custom pixel art enemy designs (Jelly, Prism, Beetle)
   - Wave-based progression system
   - Lives and scoring mechanics
   - Increasing difficulty with speed boosts
@@ -54,9 +53,9 @@ Transform your PC into a classic vintage handheld console! Enjoy three fully mod
   - Retro grid-based movement system
   - Gem collection mechanics
   - **Intelligent Enemy AI with State Machine**
-    - **PATROL Mode**: Enemy follows patrol route (dark red)
-    - **CHASE Mode**: Spots player within 6-tile vision radius and pursues with A* pathfinding (bright red)
-    - **SEARCH Mode**: Lost sight of player, searches last known location (orange)
+    - **PATROL Mode**: Enemy follows patrol route (hollow guard)
+    - **CHASE Mode**: Spots player within 6-tile vision radius and pursues with A* pathfinding (solid dark guard)
+    - **SEARCH Mode**: Lost sight of player, searches last known location (mid-tone guard)
     - Line-of-sight vision system (walls block vision)
     - Predictive movement targeting
   - A* pathfinding for smart wall navigation
@@ -76,24 +75,24 @@ Transform your PC into a classic vintage handheld console! Enjoy three fully mod
 
 ## 🎮 NostalgiKit Controls
 
-### D-Pad Navigation
-- **Arrow Keys / WASD**: Navigate menus and make selections
-- **UP/DOWN**: Navigate through menu options
-- **LEFT/RIGHT**: Additional navigation (game-specific)
+Every game uses the same buttons, the same screen layout (title bar on top, hints at the bottom)
+and the same green four-shade palette. Keyboard, gamepad and the on-screen buttons all do the same thing.
 
-### Action Buttons
-- **X Button** (Space/Enter/X): Select, Confirm, Execute actions - **RED**
-- **Y Button** (Escape/Backspace/Y): Cancel, Back, Exit to menu - **PURPLE**
-- **START Button**: Begin games, confirm selections
-- **SELECT Button** (Tab): Return to main menu from any game
+| Button | Keyboard | Gamepad | What it does |
+|--------|----------|---------|--------------|
+| **D-Pad** | Arrow keys / WASD | D-Pad or left stick | Move, navigate menus |
+| **X** (red) | Space / X | A or X | Confirm, primary action (fire, rotate, dash...) |
+| **Y** (purple) | Esc / Backspace / Y | B or Y | Back; pauses action games (press again to exit) |
+| **START** | Enter / P | START | Start a game, pause / resume |
+| **SELECT** | Tab | BACK | Return to the hub menu from anywhere |
+
+The bottom line of the screen always shows what X / Y / D-Pad do on the current screen.
 
 ### Authentic Handheld Features
-- **400x600 Pixel Display**: Classic handheld screen proportions
 - **Vintage Cream Theme**: Authentic #E8E0C7 vintage cream body
-- **Monochrome Green Screen**: Classic #9BBB59 green display
+- **Four-Shade Green Screen**: Classic dot-matrix palette shared by every game
 - **Courier Font**: Pixelated monospace text for retro feel
 - **Physical Button Layout**: Real handheld button arrangement
-- **Retro-Style Branding**: Classic portable console aesthetics
 
 ## 🚀 Quick Start
 
@@ -123,10 +122,11 @@ Direct access to the NostalgiKit gaming hub interface.
   ```cmd
   pip install Pillow
   ```
-- **pygame** for gamepad support (optional):
+- **pygame** for gamepad support (optional - games work without it):
   ```cmd
   pip install pygame
   ```
+  On Python versions where `pygame` has no wheel yet (e.g. 3.14), use `pip install pygame-ce` instead.
 
 ## 🛠️ Installation
 
@@ -144,18 +144,19 @@ Direct access to the NostalgiKit gaming hub interface.
 
 ```
 📦 NostalgiKit
-├── 🎮 game_hub.py                # Main NostalgiKit interface
+├── 🎮 game_hub.py                # Main NostalgiKit interface (console, menus, input)
+├── 🎨 nostalgik_ui.py            # Shared UI kit: palette, fonts, screen layout, input routing
+├── 🕹️ console_widgets.py       # Console hardware: screen bezel, D-Pad, X/Y, SELECT/START
 ├── 🔮 card_guess_nostalgik.py    # Number Oracle game
 ├── ⚔️ war_game_nostalgik.py      # War Game combat
 ├── 🌊 river_game_nostalgik.py    # River Puzzle logic
 ├── 🚀 galaxy_war_pat.py          # Galaxy War Pat shooter
-├── � crakers_nostalgik.py       # Crakers Grid Adventure
-├── 🧱 tetris_nostalgik.py        # Block Stack falling blocks
-├── �🏁 main.py                    # Application launcher with dependency checks
+├── 🍰 crakers_nostalgik.py       # Crakers Grid Adventure
+├── 🧱 block_stack_nostalgik.py   # Block Stack falling blocks
+├── 🏁 main.py                    # Application launcher with dependency checks
 ├── 🎯 start_games.bat            # Windows launcher with retro startup screen
 ├── 📖 README.md                  # This documentation
 ├── 📜 LICENSE.md                 # MIT License
-├── 📜 VERSION.md                 # Version information
 ├── 📜 COPYRIGHT.md               # Copyright notice
 └── 📜 DISCLAIMER                 # Legal disclaimer
 ```
@@ -174,10 +175,9 @@ Direct access to the NostalgiKit gaming hub interface.
 
 ## 🎯 Gameplay Tips
 
-### Number Oracle Strategy
-- Start with middle-range guesses (around 50)
-- Use binary search logic for optimal efficiency
-- Pay attention to hint patterns for faster solving
+### Number Oracle Secret
+- Each card holds the numbers that share one binary bit (1, 2, 4, 8, 16)
+- The oracle simply adds up the first number of every card you said YES to
 
 ### War Game Tactics
 - Balance offense and defense strategically
@@ -199,7 +199,7 @@ Direct access to the NostalgiKit gaming hub interface.
 
 ### Crakers Adventure Tips
 - Plan your route to collect all gems
-- **Watch enemy color changes**: Red = chasing you, Orange = searching, Dark red = patrolling
+- **Watch the guard's shade**: Solid dark = chasing you, mid-tone = searching, hollow = patrolling
 - **Use line-of-sight**: Hide behind walls to break enemy vision and escape
 - Save dash for emergencies or speedruns
 - **Enemy AI is smart**: It uses A* pathfinding and predicts your movement
@@ -215,8 +215,9 @@ Direct access to the NostalgiKit gaming hub interface.
 ## 🔧 Technical Features
 
 ### Retro Handheld Simulation
-- **Screen Resolution**: 400x600 pixels (classic proportions)
-- **Color Palette**: Authentic vintage cream and green theme
+- **Window**: the whole 460x694 window is the console body, with a 334x367 game screen
+- **Color Palette**: Authentic vintage cream body, four-shade green screen
+- **One UI Kit**: `nostalgik_ui.py` gives every game the same layout, palette, fonts and controls
 - **Font System**: Courier monospace for pixelated text rendering
 - **Button Response**: Physical feedback simulation
 
@@ -237,9 +238,7 @@ Experience the nostalgia of classic handheld gaming:
 ## 🏆 Achievement System
 
 ### Number Oracle Mastery
-- **Quick Guess**: Solve in under 5 attempts
-- **Perfect Logic**: Use optimal binary search strategy
-- **Lucky Guess**: Hit the number on first try
+- **Mind Reader**: Work out how the oracle does it without reading the code
 
 ### War Game Victory
 - **Swift Victory**: Win in under 5 rounds
@@ -265,7 +264,7 @@ Experience the nostalgia of classic handheld gaming:
 
 ## 🎮 The Complete NostalgiKit Experience
 
-Step back in time to the golden age of portable gaming! Our NostalgiKit recreates the magic of vintage handheld consoles while bringing five beloved games into the modern era - from classic puzzle and strategy to fast-paced arcade action. Whether you're a retro gaming enthusiast or discovering these gameplay styles for the first time, prepare for hours of engaging, nostalgic entertainment.
+Step back in time to the golden age of portable gaming! Our NostalgiKit recreates the magic of vintage handheld consoles while bringing six beloved games into the modern era - from classic puzzle and strategy to fast-paced arcade action. Whether you're a retro gaming enthusiast or discovering these gameplay styles for the first time, prepare for hours of engaging, nostalgic entertainment.
 
 **🎯 Ready to Game? Launch your NostalgiKit and dive into retro gaming perfection!**
 
@@ -274,7 +273,7 @@ Step back in time to the golden age of portable gaming! Our NostalgiKit recreate
 ## 📜 License & Copyright
 
 ### Copyright Notice
-Copyright (c) 2025-2026 NostalgiKit Project by B. Tamer Akipek. All rights reserved.
+Copyright (c) 2025-2026 NostalgiKit Project by B. Tamer Akipek.
 
 This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for complete details.
 

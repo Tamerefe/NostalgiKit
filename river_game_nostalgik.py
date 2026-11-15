@@ -1,659 +1,185 @@
 """
-NostalgiKit River Crossing Game - Retro Style
-Classic farmer puzzle with authentic retro handheld look and feel
+NostalgiKit River Puzzle
+Classic farmer, wolf, goat and cabbage river crossing puzzle.
 
 Copyright (c) 2025 NostalgiKit Project
 Licensed under MIT License - see LICENSE file for details
 """
 
 import tkinter as tk
-from tkinter import ttk, messagebox
-import tkinter.font as tkFont
-import random
-import threading
-import time
-import pygame  # For gamepad support
 
-class NostalgiKitRiverGame:
-    def __init__(self, parent, return_callback):
-        self.parent = parent
-        self.return_callback = return_callback
-        
-        # Game state
-        self.west_side = ["Farmer", "Wolf", "Goat", "Cabbage"]
-        self.east_side = []
-        self.boat_position = "west"  # "west" or "east"
-        self.boat_contents = []
-        self.game_won = False
-        self.move_count = 0
-        self.selected_item = 0  # For D-Pad selection
-        
-        # Character data with NostalgiKit style icons
-        self.characters = {
-            "Farmer": {"icon": "F", "desc": "Farmer"},
-            "Wolf": {"icon": "W", "desc": "Wolf"},
-            "Goat": {"icon": "G", "desc": "Goat"},
-            "Cabbage": {"icon": "C", "desc": "Cabbage"}
-        }
-        
-        # NostalgiKit colors (matching game_hub.py exactly)
-        self.colors = {
-            'NostalgiKit_cream': '#E8E0C7',      # Main vintage cream color
-            'screen_green': '#9BBB59',        # Classic green screen
-            'dark_green': '#8B9467',          # Dark accents
-            'screen_dark': '#374224',         # Dark screen areas
-            'button_gray': '#8E8E93',         # Button color
-            'text_dark': '#1C1C1E',           # Dark text
-            'highlight': '#FFD23F',           # Yellow highlight
-            'red_button': '#FF3B30',          # X button (red)
-            'purple_button': '#8E44AD'        # Y button (purple)
-        }
-        
-        self.current_screen = "intro"
-        self.gamepad_polling_active = True
-        self.setup_fonts()
-        self.setup_retro_interface()
-        self.init_gamepad()
-        
-    def setup_fonts(self):
-        """Setup NostalgiKit style fonts (matching game_hub.py exactly)"""
-        self.fonts = {
-            'retro_title': tkFont.Font(family="Courier", size=10, weight="bold"),
-            'retro_text': tkFont.Font(family="Courier", size=9, weight="bold"),
-            'retro_small': tkFont.Font(family="Courier", size=8, weight="bold"),
-            'retro_large': tkFont.Font(family="Courier", size=12, weight="bold"),
-            'retro_tiny': tkFont.Font(family="Courier", size=7, weight="bold")
-        }
-        
-    def setup_retro_interface(self):
-        """Create game interface inside hub's screen frame"""
-        # Create main game frame inside hub's screen (parent is now the screen frame)
-        # Only create once - reuse on subsequent calls
-        if not hasattr(self, 'game_frame') or not self.game_frame.winfo_exists():
-            self.game_frame = tk.Frame(self.parent, bg=self.colors['screen_green'])
-            self.game_frame.pack(fill='both', expand=True)
-        
-        # Clear any previous content
-        self.clear_screen()
-        
-        # Setup keyboard bindings to root window
-        root = self.parent.winfo_toplevel()
-        root.focus_set()
-        root.bind('<Key>', self.on_key_press)
-        root.bind('<Button-1>', lambda e: root.focus_set())
-        
-        # Start game
+import nostalgik_ui as ui
+
+ITEMS = ["Farmer", "Wolf", "Goat", "Cabbage"]
+ICONS = {"Farmer": "F", "Wolf": "W", "Goat": "G", "Cabbage": "C"}
+OPTIMAL_MOVES = 7
+
+
+class NostalgiKitRiverGame(ui.NostalgiKitGame):
+    TITLE = "RIVER PUZZLE"
+
+    def on_show(self):
         self.show_intro()
-    
-    def on_key_press(self, event):
-        """Handle keyboard input"""
-        key = event.keysym.lower()
-        
-        # Direction keys
-        if key in ['up', 'w']:
-            self.dpad_up()
-        elif key in ['down', 's']:
-            self.dpad_down()
-        elif key in ['left', 'a']:
-            self.dpad_left()
-        elif key in ['right', 'd']:
-            self.dpad_right()
-        # Action buttons
-        elif key in ['return', 'space', 'x']:
-            self.x_button_action()
-        elif key in ['escape', 'backspace', 'y']:
-            self.y_button_action()
-        elif key in ['tab']:
-            self.exit_game()
-            
+
+    # ------------------------------------------------------------------
+    # Screens
+    # ------------------------------------------------------------------
     def show_intro(self):
-        """Show game introduction"""
-        self.clear_screen()
-        self.current_screen = "intro"
-        
-        content = tk.Frame(self.game_frame, bg=self.colors['screen_green'])
-        content.pack(fill='both', expand=True, padx=5, pady=5)
-        
-        # Title
-        title_label = tk.Label(content,
-                              text="RIVER PUZZLE",
-                              font=self.fonts['retro_title'],
-                              fg=self.colors['screen_dark'],
-                              bg=self.colors['screen_green'])
-        title_label.pack(pady=(5, 5))
-        
-        # Story
-        story_text = """A farmer has:
-Wolf, Goat, Cabbage
+        self.screen = "intro"
+        self.clear_body()
+        self.set_status("")
+        self.set_hint(ui.hint(("X", "START"), ("Y", "EXIT")))
 
-He must cross a
-river by boat.
+        ui.heading(self.body, "CROSS THE RIVER")
+        story = ("A farmer must take a\n"
+                 "Wolf, a Goat and a Cabbage\n"
+                 "across the river.\n\n"
+                 "The boat holds the farmer\n"
+                 "and ONE passenger.\n\n"
+                 "Left alone together:\n"
+                 "Wolf eats Goat,\n"
+                 "Goat eats Cabbage!")
+        ui.label(self.body, story, size='small').pack(expand=True)
 
-Boat holds farmer
-+ 1 item only.
-
-RULES:
-- Wolf eats Goat
-- Goat eats Cabbage
-if left alone!
-
-Get all across
-safely!"""
-        
-        story_label = tk.Label(content,
-                              text=story_text,
-                              font=self.fonts['retro_small'],
-                              fg=self.colors['screen_dark'],
-                              bg=self.colors['screen_green'],
-                              justify='left')
-        story_label.pack(expand=True)
-        
-        # Controls info
-        controls_label = tk.Label(content,
-                                 text="START=Begin Game",
-                                 font=self.fonts['retro_tiny'],
-                                 fg=self.colors['screen_dark'],
-                                 bg=self.colors['screen_green'])
-        controls_label.pack(side='bottom', pady=5)
-        
     def start_game(self):
-        """Start the actual game"""
-        self.west_side = ["Farmer", "Wolf", "Goat", "Cabbage"]
+        self.west_side = list(ITEMS)
         self.east_side = []
         self.boat_position = "west"
-        self.boat_contents = []
-        self.game_won = False
         self.move_count = 0
         self.selected_item = 0
-        self.current_screen = "game"
-        
+        self.screen = "game"
         self.show_game_board()
-        
+
+    def current_side(self):
+        return self.west_side if self.boat_position == "west" else self.east_side
+
+    def other_side(self):
+        return self.east_side if self.boat_position == "west" else self.west_side
+
+    def options(self):
+        return ["Alone"] + [c for c in self.current_side() if c != "Farmer"]
+
     def show_game_board(self):
-        """Show the main game board"""
-        self.clear_screen()
-        
-        # Check for game end conditions
         loss_reason = self.check_loss()
         if loss_reason:
-            self.show_loss(loss_reason)
+            self.show_end(won=False, reason=loss_reason)
             return
-        elif self.check_win():
-            self.show_victory()
+        if self.check_win():
+            self.show_end(won=True)
             return
-            
-        content = tk.Frame(self.game_frame, bg=self.colors['screen_green'])
-        content.pack(fill='both', expand=True, padx=3, pady=3)
-        
-        # Status bar
-        status_text = f"Moves:{self.move_count}"
-        status_label = tk.Label(content,
-                               text=status_text,
-                               font=self.fonts['retro_small'],
-                               fg=self.colors['screen_dark'],
-                               bg=self.colors['screen_green'])
-        status_label.pack(pady=2)
-        
-        # River visualization
-        self.draw_river_scene(content)
-        
-        # Action area
-        self.create_action_area(content)
-        
-    def draw_river_scene(self, parent):
-        """Draw simplified river scene"""
-        river_frame = tk.Frame(parent, bg=self.colors['screen_green'])
-        river_frame.pack(fill='x', pady=5)
-        
-        # West side
-        west_frame = tk.Frame(river_frame, bg=self.colors['screen_green'])
-        west_frame.pack(side='left', fill='x', expand=True)
-        
-        west_label = tk.Label(west_frame,
-                             text="WEST",
-                             font=self.fonts['retro_tiny'],
-                             fg=self.colors['screen_dark'],
-                             bg=self.colors['screen_green'])
-        west_label.pack()
-        
-        west_chars = "".join([self.characters[char]["icon"] for char in self.west_side])
-        if not west_chars:
-            west_chars = "."
-            
-        west_display = tk.Label(west_frame,
-                               text=west_chars,
-                               font=self.fonts['retro_text'],
-                               fg=self.colors['screen_dark'],
-                               bg=self.colors['screen_green'])
-        west_display.pack()
-        
-        # River and boat
-        river_frame_mid = tk.Frame(river_frame, bg=self.colors['screen_green'], width=60)
-        river_frame_mid.pack(side='left')
-        river_frame_mid.pack_propagate(False)
-        
-        river_label = tk.Label(river_frame_mid,
-                              text="~~~~",
-                              font=self.fonts['retro_small'],
-                              fg=self.colors['screen_dark'],
-                              bg=self.colors['screen_green'])
-        river_label.pack()
-        
-        # Boat
-        boat_contents = "".join([self.characters[char]["icon"] for char in self.boat_contents])
-        if not boat_contents:
-            boat_contents = "."
-            
-        boat_symbol = "<" if self.boat_position == "west" else ">"
-        boat_text = f"{boat_symbol}{boat_contents}{boat_symbol}"
-        
-        boat_label = tk.Label(river_frame_mid,
-                             text=boat_text,
-                             font=self.fonts['retro_small'],
-                             fg=self.colors['screen_dark'],
-                             bg=self.colors['screen_green'])
-        boat_label.pack()
-        
-        # East side
-        east_frame = tk.Frame(river_frame, bg=self.colors['screen_green'])
-        east_frame.pack(side='left', fill='x', expand=True)
-        
-        east_label = tk.Label(east_frame,
-                             text="EAST",
-                             font=self.fonts['retro_tiny'],
-                             fg=self.colors['screen_dark'],
-                             bg=self.colors['screen_green'])
-        east_label.pack()
-        
-        east_chars = "".join([self.characters[char]["icon"] for char in self.east_side])
-        if not east_chars:
-            east_chars = "."
-            
-        east_display = tk.Label(east_frame,
-                               text=east_chars,
-                               font=self.fonts['retro_text'],
-                               fg=self.colors['screen_dark'],
-                               bg=self.colors['screen_green'])
-        east_display.pack()
-        
-    def create_action_area(self, parent):
-        """Create action selection area"""
-        action_frame = tk.Frame(parent, bg=self.colors['screen_green'])
-        action_frame.pack(fill='x', pady=5)
-        
-        current_side = self.west_side if self.boat_position == "west" else self.east_side
-        
-        if "Farmer" not in current_side:
-            # Farmer not on current side, can only move boat
-            instruction_label = tk.Label(action_frame,
-                                        text="X=Move Boat",
-                                        font=self.fonts['retro_small'],
-                                        fg=self.colors['screen_dark'],
-                                        bg=self.colors['screen_green'])
-            instruction_label.pack()
-        else:
-            # Farmer is on current side
-            instruction_label = tk.Label(action_frame,
-                                        text="Choose companion:",
-                                        font=self.fonts['retro_small'],
-                                        fg=self.colors['screen_dark'],
-                                        bg=self.colors['screen_green'])
-            instruction_label.pack()
-            
-            # Available options
-            self.available_options = ["Alone"]
-            for char in current_side:
-                if char != "Farmer":
-                    self.available_options.append(char)
-                    
-            # Ensure selected item is in bounds
-            if self.selected_item >= len(self.available_options):
-                self.selected_item = 0
-                
-            # Display options
-            for i, option in enumerate(self.available_options):
-                if i == self.selected_item:
-                    display_text = f"> {option}"
-                    bg_color = self.colors['screen_dark']
-                    fg_color = self.colors['screen_green']
-                else:
-                    display_text = f"  {option}"
-                    bg_color = self.colors['screen_green']
-                    fg_color = self.colors['screen_dark']
-                    
-                option_label = tk.Label(action_frame,
-                                       text=display_text,
-                                       font=self.fonts['retro_small'],
-                                       fg=fg_color,
-                                       bg=bg_color,
-                                       anchor='w')
-                option_label.pack(fill='x', padx=10)
-                
-        # Controls
-        controls_label = tk.Label(action_frame,
-                                 text="UP/DOWN:Select X:Go",
-                                 font=self.fonts['retro_tiny'],
-                                 fg=self.colors['screen_dark'],
-                                 bg=self.colors['screen_green'])
-        controls_label.pack(side='bottom', pady=2)
-        
-    def dpad_up(self):
-        """Handle D-Pad up"""
-        if self.current_screen == "game":
-            current_side = self.west_side if self.boat_position == "west" else self.east_side
-            if "Farmer" in current_side and hasattr(self, 'available_options'):
-                self.selected_item = (self.selected_item - 1) % len(self.available_options)
-                self.show_game_board()
-                
-    def dpad_down(self):
-        """Handle D-Pad down"""
-        if self.current_screen == "game":
-            current_side = self.west_side if self.boat_position == "west" else self.east_side
-            if "Farmer" in current_side and hasattr(self, 'available_options'):
-                self.selected_item = (self.selected_item + 1) % len(self.available_options)
-                self.show_game_board()
-                
-    def dpad_left(self):
-        """Handle D-Pad left"""
-        pass  # Not used in this game
-        
-    def dpad_right(self):
-        """Handle D-Pad right"""
-        pass  # Not used in this game
-        
-    def x_button_action(self):
-        """Handle X button press"""
-        if self.current_screen == "intro":
-            self.start_game()
-        elif self.current_screen == "game":
-            self.execute_move()
-        elif self.current_screen in ["victory", "loss"]:
-            self.start_game()
-            
-    def y_button_action(self):
-        """Handle Y button press"""
-        if self.current_screen == "game":
-            self.show_intro()
-        else:
-            self.exit_game()
-            
-    def execute_move(self):
-        """Execute the selected move"""
-        current_side = self.west_side if self.boat_position == "west" else self.east_side
-        other_side = self.east_side if self.boat_position == "west" else self.west_side
-        
-        if "Farmer" not in current_side:
-            # Just move boat
-            self.boat_position = "east" if self.boat_position == "west" else "west"
-            self.move_count += 1
-        else:
-            # Move farmer with selected companion
-            if hasattr(self, 'available_options'):
-                selected_option = self.available_options[self.selected_item]
-                
-                # Move farmer
-                current_side.remove("Farmer")
-                other_side.append("Farmer")
-                
-                # Move companion if not alone
-                if selected_option != "Alone":
-                    current_side.remove(selected_option)
-                    other_side.append(selected_option)
-                    
-                # Move boat
-                self.boat_position = "east" if self.boat_position == "west" else "west"
-                self.move_count += 1
-                self.selected_item = 0
-                
-        self.show_game_board()
-        
-    def check_loss(self):
-        """Check if game is lost"""
-        # Check west side
-        if "Farmer" not in self.west_side:
-            if "Wolf" in self.west_side and "Goat" in self.west_side:
-                return "Wolf ate Goat!"
-            if "Goat" in self.west_side and "Cabbage" in self.west_side:
-                return "Goat ate Cabbage!"
-                
-        # Check east side
-        if "Farmer" not in self.east_side:
-            if "Wolf" in self.east_side and "Goat" in self.east_side:
-                return "Wolf ate Goat!"
-            if "Goat" in self.east_side and "Cabbage" in self.east_side:
-                return "Goat ate Cabbage!"
-                
-        return False
-        
-    def check_win(self):
-        """Check if game is won"""
-        return len(self.east_side) == 4 and all(char in self.east_side for char in ["Farmer", "Wolf", "Goat", "Cabbage"])
-        
-    def show_loss(self, reason):
-        """Show loss screen"""
-        self.clear_screen()
-        self.current_screen = "loss"
-        
-        content = tk.Frame(self.game_frame, bg=self.colors['screen_green'])
-        content.pack(fill='both', expand=True, padx=5, pady=5)
-        
-        # Loss title
-        title_label = tk.Label(content,
-                              text="GAME OVER",
-                              font=self.fonts['retro_title'],
-                              fg=self.colors['screen_dark'],
-                              bg=self.colors['screen_green'])
-        title_label.pack(pady=10)
-        
-        # Reason
-        reason_label = tk.Label(content,
-                               text=reason,
-                               font=self.fonts['retro_text'],
-                               fg=self.colors['screen_dark'],
-                               bg=self.colors['screen_green'])
-        reason_label.pack(pady=10)
-        
-        # Advice
-        advice_text = """Remember:
-Never leave:
-- Wolf + Goat
-- Goat + Cabbage
-alone together!"""
-        
-        advice_label = tk.Label(content,
-                               text=advice_text,
-                               font=self.fonts['retro_small'],
-                               fg=self.colors['screen_dark'],
-                               bg=self.colors['screen_green'],
-                               justify='center')
-        advice_label.pack(expand=True)
-        
-        # Controls
-        controls_label = tk.Label(content,
-                                 text="X=Try Again  Y=Menu",
-                                 font=self.fonts['retro_tiny'],
-                                 fg=self.colors['screen_dark'],
-                                 bg=self.colors['screen_green'])
-        controls_label.pack(side='bottom', pady=5)
-        
-    def show_victory(self):
-        """Show victory screen"""
-        self.clear_screen()
-        self.current_screen = "victory"
-        
-        content = tk.Frame(self.game_frame, bg=self.colors['screen_green'])
-        content.pack(fill='both', expand=True, padx=5, pady=5)
-        
-        # Victory title
-        title_label = tk.Label(content,
-                              text="SUCCESS!",
-                              font=self.fonts['retro_title'],
-                              fg=self.colors['screen_dark'],
-                              bg=self.colors['screen_green'])
-        title_label.pack(pady=10)
-        
-        # Stats
-        stats_text = f"Completed in{self.move_count} moves!"
-        stats_label = tk.Label(content,
-                              text=stats_text,
-                              font=self.fonts['retro_text'],
-                              fg=self.colors['screen_dark'],
-                              bg=self.colors['screen_green'],
-                              justify='center')
-        stats_label.pack(pady=10)
-        
-        # Performance rating
-        if self.move_count <= 7:
-            rating = "PERFECT! Optimal solution!"
-        elif self.move_count <= 10:
-            rating = "EXCELLENT! Very efficient!"
-        elif self.move_count <= 15:
-            rating = "GOOD! Well done!"
-        else:
-            rating = "COMPLETED! Great job!"
-            
-        rating_label = tk.Label(content,
-                               text=rating,
-                               font=self.fonts['retro_small'],
-                               fg=self.colors['screen_dark'],
-                               bg=self.colors['screen_green'],
-                               justify='center')
-        rating_label.pack(expand=True)
-        
-        # Characters celebration
-        celebration_label = tk.Label(content,
-                                     text="F W G C",
-                                     font=self.fonts['retro_text'],
-                                     fg=self.colors['screen_dark'],
-                                     bg=self.colors['screen_green'])
-        celebration_label.pack(pady=5)
-        
-        # Controls
-        controls_label = tk.Label(content,
-                                 text="X=Play Again  Y=Menu",
-                                 font=self.fonts['retro_tiny'],
-                                 fg=self.colors['screen_dark'],
-                                 bg=self.colors['screen_green'])
-        controls_label.pack(side='bottom', pady=5)
-        
-    def clear_screen(self):
-        """Clear the screen - remove all children but keep the frame"""
-        # Only destroy children of game_frame, not the frame itself
-        for widget in self.game_frame.winfo_children():
-            widget.destroy()
-    
-    def exit_game(self):
-        """Exit game and return to hub"""
-        # Stop polling
-        self.gamepad_polling_active = False
-        
-        # Unbind keyboard from root
-        root = self.parent.winfo_toplevel()
-        root.unbind('<Key>')
-        root.unbind('<Button-1>')
-        
-        # Clear the game frame and exit
-        self.clear_screen()
-        self.return_callback()
-    
-    def init_gamepad(self):
-        """Initialize gamepad support"""
-        try:
-            if not pygame.get_init():
-                pygame.init()
-            if not pygame.joystick.get_init():
-                pygame.joystick.init()
-            
-            self.joystick = None
-            self.gamepad_enabled = True
-            self.last_button_state = {}
-            self.last_hat = (0, 0)
-            
-            if pygame.joystick.get_count() > 0:
-                self.joystick = pygame.joystick.Joystick(0)
-                self.joystick.init()
-            
-            self.parent.after(30, self.poll_gamepad)
-        except Exception as e:
-            print(f"Gamepad init error: {e}")
-            self.gamepad_enabled = False
-    
-    def poll_gamepad(self):
-        """Poll gamepad input"""
-        if not self.gamepad_enabled or not self.gamepad_polling_active:
-            return
-        
-        try:
-            self.parent.winfo_exists()
-        except:
-            return
-        
-        try:
-            pygame.event.pump()
-            
-            if self.joystick is not None and self.joystick.get_init():
-                def is_pressed(btn):
-                    try:
-                        return self.joystick.get_button(btn) == 1
-                    except:
-                        return False
-                
-                def just_pressed(btn):
-                    current = is_pressed(btn)
-                    previous = self.last_button_state.get(btn, False)
-                    self.last_button_state[btn] = current
-                    return current and not previous
-                
-                # Simulate key presses  
-                if just_pressed(0) or just_pressed(2):  # A or X
-                    event = type('Event', (), {'keysym': 'Return', 'char': '\r'})()
-                    self.on_key_press(event)
-                
-                if just_pressed(1) or just_pressed(3):  # B or Y
-                    event = type('Event', (), {'keysym': 'Escape', 'char': '\x1b'})()
-                    self.on_key_press(event)
-                
-                # D-Pad
-                try:
-                    hat = self.joystick.get_hat(0)
-                    if hat != self.last_hat:
-                        if hat == (0, 1):  # UP
-                            event = type('Event', (), {'keysym': 'Up', 'char': ''})()
-                            self.on_key_press(event)
-                        elif hat == (0, -1):  # DOWN
-                            event = type('Event', (), {'keysym': 'Down', 'char': ''})()
-                            self.on_key_press(event)
-                        self.last_hat = hat
-                except:
-                    pass
-        
-        except Exception as e:
-            if "bad window" not in str(e):
-                print(f"Gamepad poll error: {e}")
-        
-        try:
-            self.parent.after(30, self.poll_gamepad)
-        except:
-            pass
-    
-    def show(self):
-        """Show game again (reuse instance)"""
-        # Oyun durumunu sıfırla
-        self.west_side = ["Farmer", "Wolf", "Goat", "Cabbage"]
-        self.east_side = []
-        self.boat_position = "west"
-        self.boat_contents = []
-        self.game_won = False
-        self.move_count = 0
-        self.selected_item = 0
-        
-        # Interface'i yeniden oluştur
-        self.setup_retro_interface()
-        
-        # Gamepad'i yeniden başlat
-        if self.gamepad_enabled:
-            self.gamepad_polling_active = True
-            self.parent.after(100, self.poll_gamepad)
 
-# Update the import
+        self.clear_body()
+        self.set_status(f"MOVES {self.move_count}")
+        self.set_hint(ui.hint(("▲▼", "PICK"), ("X", "ROW"), ("Y", "QUIT")))
+
+        self.draw_river_scene()
+
+        ui.label(self.body, "Take across:", size='small').pack(pady=(8, 2))
+        options = self.options()
+        self.selected_item = min(self.selected_item, len(options) - 1)
+        ui.menu_list(self.body, [(o, None) for o in options], self.selected_item).pack(fill='x')
+
+    def draw_river_scene(self):
+        width, height = ui.SCREEN_WIDTH - 20, 120
+        canvas = tk.Canvas(self.body, width=width, height=height, bg=ui.SCREEN_BG, highlightthickness=0)
+        canvas.pack(pady=(10, 0))
+        bank_w = 90
+        river_x0, river_x1 = bank_w, width - bank_w
+
+        # Banks and river
+        canvas.create_rectangle(0, 0, bank_w, height, fill=ui.SCREEN_LIGHT, outline=ui.SCREEN_DARK)
+        canvas.create_rectangle(river_x1, 0, width, height, fill=ui.SCREEN_LIGHT, outline=ui.SCREEN_DARK)
+        for y in range(14, height, 18):
+            for x in range(river_x0 + 6, river_x1 - 10, 22):
+                canvas.create_text(x + (y // 18 % 2) * 8, y, text="~", font=self.fonts['text'], fill=ui.SCREEN_MID)
+
+        canvas.create_text(bank_w // 2, 10, text="WEST", font=self.fonts['tiny'], fill=ui.SCREEN_DARK)
+        canvas.create_text(river_x1 + bank_w // 2, 10, text="EAST", font=self.fonts['tiny'], fill=ui.SCREEN_DARK)
+
+        def draw_bank(items, x_center):
+            for i, item in enumerate(items):
+                canvas.create_text(x_center, 30 + i * 22, text=f"{ICONS[item]} {item.upper()}",
+                                   font=self.fonts['small'], fill=ui.SCREEN_DARK)
+
+        draw_bank([i for i in ITEMS if i in self.west_side], bank_w // 2)
+        draw_bank([i for i in ITEMS if i in self.east_side], river_x1 + bank_w // 2)
+
+        # Boat docked at the farmer's bank
+        bx = river_x0 + 30 if self.boat_position == "west" else river_x1 - 30
+        by = height // 2 + 10
+        canvas.create_polygon(bx - 24, by - 8, bx + 24, by - 8, bx + 16, by + 8, bx - 16, by + 8,
+                              fill=ui.SCREEN_DARK, outline=ui.SCREEN_DARK)
+        canvas.create_text(bx, by, text="BOAT", font=self.fonts['tiny'], fill=ui.SCREEN_BG)
+
+    def show_end(self, won, reason=""):
+        self.screen = "end"
+        self.clear_body()
+        self.set_hint(ui.hint(("X", "RETRY"), ("Y", "EXIT")))
+        if won:
+            ui.heading(self.body, "SUCCESS!")
+            if self.move_count <= OPTIMAL_MOVES:
+                rating = "PERFECT! Optimal solution!"
+            elif self.move_count <= 10:
+                rating = "EXCELLENT! Very efficient!"
+            elif self.move_count <= 15:
+                rating = "GOOD! Well done!"
+            else:
+                rating = "COMPLETED! Great job!"
+            ui.label(self.body, f"Completed in {self.move_count} moves").pack(pady=6)
+            ui.label(self.body, rating, size='small').pack(expand=True)
+            ui.label(self.body, "F  W  G  C", size='large').pack(pady=(0, 20))
+        else:
+            ui.heading(self.body, "GAME OVER")
+            ui.label(self.body, reason, size='title').pack(pady=6)
+            ui.label(self.body, "Never leave alone:\n\nWolf + Goat\nGoat + Cabbage",
+                     size='small').pack(expand=True)
+
+    # ------------------------------------------------------------------
+    # Input
+    # ------------------------------------------------------------------
+    def on_dpad(self, direction, pressed=True):
+        if not pressed or self.screen != "game" or direction not in ("UP", "DOWN"):
+            return
+        step = -1 if direction == "UP" else 1
+        self.selected_item = (self.selected_item + step) % len(self.options())
+        self.show_game_board()
+
+    def on_button(self, button):
+        if self.screen == "game":
+            if button == "X":
+                self.execute_move()
+            elif button == "Y":
+                self.show_intro()
+        elif button in ("X", "START"):
+            self.start_game()
+        elif button == "Y":
+            self.exit_to_hub()
+
+    # ------------------------------------------------------------------
+    # Rules
+    # ------------------------------------------------------------------
+    def execute_move(self):
+        passenger = self.options()[self.selected_item]
+        current, other = self.current_side(), self.other_side()
+        for item in ("Farmer",) if passenger == "Alone" else ("Farmer", passenger):
+            current.remove(item)
+            other.append(item)
+        self.boat_position = "east" if self.boat_position == "west" else "west"
+        self.move_count += 1
+        self.selected_item = 0
+        self.show_game_board()
+
+    def check_loss(self):
+        for side in (self.west_side, self.east_side):
+            if "Farmer" not in side:
+                if "Wolf" in side and "Goat" in side:
+                    return "Wolf ate Goat!"
+                if "Goat" in side and "Cabbage" in side:
+                    return "Goat ate Cabbage!"
+        return None
+
+    def check_win(self):
+        return len(self.east_side) == len(ITEMS)
+
+
 RiverGame = NostalgiKitRiverGame

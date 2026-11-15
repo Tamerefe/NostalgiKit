@@ -1,14 +1,12 @@
 NostalgiKit - Copyright Notice
 ==================================
 
-Copyright (c) 2025 NostalgiKit Project. All rights reserved.
+Copyright (c) 2025-2026 NostalgiKit Project.
 
-This software and its documentation are protected by copyright law. 
-Unauthorized reproduction or distribution of this software, or any portion 
-of it, may result in severe civil and criminal penalties, and will be 
-prosecuted to the maximum extent possible under the law.
-
-Licensed under the MIT License - see LICENSE file for details.
+This software and its documentation are protected by copyright law and are
+released under the MIT License: anyone may use, copy, modify, merge, publish,
+distribute, sublicense and sell copies, provided the copyright notice and the
+license text are included. See the LICENSE file for details.
 
 TRADEMARK NOTICE
 ================
@@ -28,8 +26,10 @@ of the copyright owner, except as permitted by the MIT License terms.
 
 THIRD-PARTY COMPONENTS
 ======================
-This project may include third-party software components that are governed by 
-their respective licenses. Such components are clearly identified and their 
-licensing terms are respected.
+NostalgiKit uses the following libraries as separately installed
+dependencies. They are not bundled with this project and keep their own
+licenses:
+  - Pillow (MIT-CMU / HPND license) - image handling and console graphics
+  - pygame or pygame-ce (LGPL-2.1) - optional gamepad support
 
 For questions about licensing or permissions, please contact the project maintainers.
